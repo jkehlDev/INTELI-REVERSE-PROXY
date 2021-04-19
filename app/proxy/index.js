@@ -24,10 +24,10 @@ const logger = morgan("tiny");
 const proxyserver = http.createServer((req, res) => {
   proxy.web(req, res, { target: getTarget() });
   logger(req, res, (err) => {
-    console.error(err);
+    if (err) {
+      console.error(err);
+    }
   });
-  res.setHeader("content-type", "text/plain");
-  res.end("hello, world!");
 });
 
 /* proxyserver.on("open", (req, socket, head) => {
