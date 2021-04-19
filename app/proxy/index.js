@@ -30,8 +30,8 @@ const proxyserver = http.createServer((req, res) => {
   res.end("hello, world!");
 });
 
-proxyserver.on("open", (req, socket, head) => {
+/* proxyserver.on("open", (req, socket, head) => {
   proxy.ws(req, socket, head, { target: getTarget() });
-});
+}); */
 
 proxyserver.listen(process.env.ENV_PROXYPORT);
