@@ -1,0 +1,10 @@
+{
+  "keepalive": true,
+  "keepaliveInterval": 20000,
+  "dropConnectionOnKeepaliveTimeout": true,
+  "keepaliveGracePeriod": 10000,
+  "autoAcceptConnections": false,
+  "closeTimeout": 5000,
+  "disableNagleAlgorithm": true,
+  "ignoreXForwardedFor": false
+}
