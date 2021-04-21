@@ -16,7 +16,7 @@ class ProxyServer {
   #hostsQueue: Array<connection>; // Load balancer hosts connection queue
 
   // Authentification callback
-  #isAuthentified: () => boolean;
+  #isAuthentified: (request: request) => boolean;
 
   // Websocket server instance
   _wsServer: WsServer = new WsServer();
@@ -36,7 +36,7 @@ class ProxyServer {
     }
   );
 
-  constructor(isAuthentified: () => boolean) {
+  constructor(isAuthentified: (request: request) => boolean) {
     this.#isAuthentified = isAuthentified;
     this._wsServer.on('request', this.wsServerRequestHandler);
     this._wsServer.on('connect', this.wsServerConnectHandler);
@@ -81,7 +81,6 @@ class ProxyServer {
   }
 
   stop() {
-    console.log('Closing proxy ws http server ...');
     this._proxyHttpServer.close((err: Error) => {
       if (err) {
         console.error(err);
@@ -160,5 +159,4 @@ class ProxyServer {
     throw error;
   }
 }
-
-module.exports = ProxyServer;
+export default ProxyServer;
