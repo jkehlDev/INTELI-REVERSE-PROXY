@@ -4,9 +4,7 @@
   "description": "It is a reverse proxy that provides load balancer and dynamic server allocation with websocket broadcast between the server and the reverse proxy.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "tsc && node dist/tests/proxyTests.js",
-    "dev": "nodemon index.js"
+    "test": "tsc && node dist/tests/proxyTests.js"
   },
   "repository": {
     "type": "git",
