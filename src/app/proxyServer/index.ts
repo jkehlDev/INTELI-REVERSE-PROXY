@@ -1,3 +1,4 @@
+// <== Imports externals modules
 import http from 'http';
 import httpProxy from 'http-proxy';
 import { connection, IMessage, request, server as WsServer } from 'websocket';
@@ -5,25 +6,24 @@ import wsConfig from './wsConfig.json';
 import Host from '../protocol/proxyEvent/Host';
 import ProxyEvent from '../protocol/ProxyEvent';
 import ActionEnum from '../protocol/enums/ActionEnum';
+// ==>
 
 /**
  * @class ProxyServer - This Class provide an Inteli-reverse-proxy server
  * @version 1.00
  */
 class ProxyServer {
-  // Hosts collections :
   #hostsIndexMap: WeakMap<connection, Host>; // Indexed host collection on connection object (connection obj as index key)
   #hostsQueue: Array<connection>; // Load balancer hosts connection queue
 
-  // Authentification callback
-  #isAuthentified: (request: request) => boolean;
+  #isAuthentified: (request: request) => boolean;  // Authentification callback
 
-  // Websocket server instance
-  _wsServer: WsServer = new WsServer();
-  _wsHttpServer: http.Server = http.createServer();
 
-  // Proxy server instance
-  _proxyServer: httpProxy = httpProxy.createProxyServer({});
+  _wsServer: WsServer = new WsServer();   // Websocket server instance
+  _wsHttpServer: http.Server = http.createServer();   // Websocket http server instance
+
+  
+  _proxyServer: httpProxy = httpProxy.createProxyServer({}); // Proxy server instance
   _proxyHttpServer: http.Server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
       const host: Host = this.getTargetHost();
@@ -34,15 +34,23 @@ class ProxyServer {
         res.end('Service unavailable', 'utf-8');
       }
     }
-  );
+  ); // Proxy http server instance
 
-  constructor(isAuthentified: (request: request) => boolean) {
-    this.#isAuthentified = isAuthentified;
+  /**
+   * @constructor This provide instance of Inteli-proxy server
+   * @param cb - Callback provide origine ctrl before accept or reject new host connection
+   */
+  constructor(cb: (request: request) => boolean) {
+    this.#isAuthentified = cb;
     this._wsServer.on('request', this.wsServerRequestHandler);
     this._wsServer.on('connect', this.wsServerConnectHandler);
     this._wsServer.on('close', this.wsServerCloseHandler);
   }
 
+  /**
+   * @method ProxyServer#Host Get and return available host
+   * @returns {Host} Target Host or null
+   */
   getTargetHost(): Host {
     let connection: connection = this.#hostsQueue.shift();
     while (
@@ -60,6 +68,9 @@ class ProxyServer {
     }
   }
 
+  /**
+   * @method ProxyServer#start Start Inteli Proxy server
+   */
   start() {
     this.#hostsIndexMap = new WeakMap();
     this.#hostsQueue = new Array(0);
@@ -80,6 +91,9 @@ class ProxyServer {
     });
   }
 
+  /**
+   * @method ProxyServer#stop Stop Inteli Proxy server
+   */
   stop() {
     this._proxyHttpServer.close((err: Error) => {
       if (err) {
@@ -102,18 +116,22 @@ class ProxyServer {
     });
   }
 
+  /**
+   * @method ProxyServer#wsServerRequestHandler WS server request event handler
+   * @param request WS HTTP request object
+   */
   wsServerRequestHandler(request: request) {
     if (!this.#isAuthentified(request)) {
-      request.reject(); // Reject all unauthorized origin
+      request.reject(); // Reject all unauthentified client
       console.log(
         `[${new Date()}] Connection reject from ws client ${request.origin}.`
       );
       return;
     }
 
-    const connection: connection = request.accept(null, request.origin); // Accept connection
+    const connection: connection = request.accept(null, request.origin); // Accept client connection and obtain connection object
 
-    // Handle Event
+    // <=== Handling client connection events
     connection.on('message', (data: IMessage) => {
       this.wsCliMessageHandler(connection, data);
     });
@@ -123,21 +141,34 @@ class ProxyServer {
     connection.on('error', (error) => {
       this.wsCliErrorHandler(connection, error);
     });
+    // ===>
   }
 
+  /**
+   * @method ProxyServer#wsServerConnectHandler WS server connect event handler
+   * @param connection WS client connection object
+   */
   wsServerConnectHandler(connection: connection) {
     console.log(`New connection from ${connection.remoteAddress}`);
   }
+
+  /**
+   * @method ProxyServer#wsServerCloseHandler WS server close event handler
+   * @param connection WS client connection object
+   * @param reason Client close reason code
+   * @param desc Client close reason description
+   */
   wsServerCloseHandler(connection: connection, reason: number, desc: string) {
     console.log(
       `Closed connection from ${connection.remoteAddress}, reason : ${reason} - ${desc}`
     );
   }
-  wsServerUpgradeErrorHandler(error: Error) {
-    console.error(error);
-    throw error;
-  }
 
+  /**
+   * @method ProxyServer#wsCliMessageHandler WS connection message event handler
+   * @param connection WS client connection object
+   * @param data WS client connection IMessage object
+   */
   wsCliMessageHandler(connection: connection, data: IMessage) {
     const event: ProxyEvent = JSON.parse(data.utf8Data);
     if (event.header.action === ActionEnum.open) {
@@ -148,12 +179,25 @@ class ProxyServer {
       this.#hostsIndexMap.delete(connection);
     }
   }
+
+  /**
+   * @method ProxyServer#wsCliCloseHandler WS connection connect event handler
+   * @param connection WS client connection object
+   * @param code WS client connection close reason code
+   * @param desc WS client connection close reason description
+   */
   wsCliCloseHandler(connection: connection, code: number, desc: string) {
     console.log(
       `Closed connection from ${connection.remoteAddress}, reason : ${code} - ${desc}`
     );
     this.#hostsIndexMap.delete(connection);
   }
+
+  /**
+   * @method ProxyServer#wsServerConnectHandler WS connection connect event handler
+   * @param connection WS client connection object
+   * @param error WS client connection Error Object
+   */
   wsCliErrorHandler(connection: connection, error: Error) {
     console.error(connection.remoteAddress, error);
     throw error;
