@@ -58,7 +58,7 @@ class ProxyServer {
       this.#hostsQueue.length > 0
     ) {
       connection = this.#hostsQueue.shift();
-    }
+    } // Looking for available host
 
     if (this.#hostsIndexMap.has(connection)) {
       this.#hostsQueue.push(connection);
