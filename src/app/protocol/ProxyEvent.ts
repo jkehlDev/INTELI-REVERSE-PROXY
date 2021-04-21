@@ -1,11 +1,11 @@
 import Authentification from "./proxyEvent/Authentification";
 import Header from "./proxyEvent/Header";
-import Payload from "./proxyEvent/Payload";
+import Host from "./proxyEvent/Host";
 
-interface EventFrame {
+interface ProxyEvent {
   header: Header;
   authentification: Authentification;
-  payload: Payload;  
+  payload: Host;  
 }
 
-export default EventFrame;
+export default ProxyEvent;
