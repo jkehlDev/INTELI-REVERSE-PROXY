@@ -1,4 +1,4 @@
 interface Auth {
-  token: String;  
+  token: string;  
 }
 export default Auth;
