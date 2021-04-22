@@ -1,7 +1,7 @@
-import ProxyServer from '../inteliProxy';
+import inteliProxy from 'inteliProxy';
 
 // TEST Inteli proxy start and stop with delay
-const proxyServer = new ProxyServer(() => true);
+const proxyServer = new inteliProxy.ProxyServer(async () => true);
 proxyServer.start();
 setTimeout(() => {
   proxyServer.stop();
