@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import RedisClient from '../db/redisClient';
+import RedisClient from 'app/proxyServer/db/redisClient';
 
 export enum AuthResults {
   accepted,

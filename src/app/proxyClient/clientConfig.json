@@ -1,4 +1,3 @@
 {
-    "host": "localhost",
-    "port": 4242
+  "closeTimout": 5000
 }

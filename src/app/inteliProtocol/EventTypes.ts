@@ -1,5 +1,5 @@
-enum TypeEnum{
-    proxy = "proxy",
-    client = "client"
-} 
+enum TypeEnum {
+  proxy = 'proxy',
+  client = 'client',
+}
 export default TypeEnum;

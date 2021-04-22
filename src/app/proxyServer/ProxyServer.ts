@@ -1,26 +1,32 @@
 // <== Imports externals modules
 import http from 'http';
 import httpProxy from 'http-proxy';
-import { connection, IMessage, request, server as WsServer } from 'websocket';
-import wsConfig from './wsConfig.json';
-import Host from '../inteliProtocol/proxyEvent/Host';
-import ProxyEvent from '../inteliProtocol/proxyEvent/ProxyEvent';
-import ActionEnum from '../inteliProtocol/EventActions';
+import {
+  connection as Connection,
+  IMessage,
+  request,
+  server as WsServer,
+} from 'websocket';
+import wsConfig from 'app/proxyServer/wsConfig.json';
+import Host from 'app/inteliProtocol/clientEvent/Host';
+import ClientEvent from 'app/inteliProtocol/clientEvent/ClientEvent';
+import ActionEnum from 'app/inteliProtocol/EventActions';
+import EventEncode from 'app/inteliProtocol/EventEncode';
 // ==>
 
 /**
- * @class ProxyServer - This Class provide an Inteli-reverse-proxy server
+ * @class ProxyServer - This provide an Inteli-reverse-proxy server class
  * @version 1.00
  */
 class ProxyServer {
-  private hostsIndexMap: WeakMap<connection, Host>; // Indexed host collection on connection object (connection obj as index key)
-  private hostsQueue: Array<connection>; // Load balancer hosts connection queue
+  private hostsIndexMap: WeakMap<Connection, Host>; // Indexed host collection on connection object (connection obj as index key)
+  private hostsQueue: Array<Connection>; // Load balancer hosts connection queue
 
-  private isAuthentified: (request: request) => boolean;  // Authentification callback
+  private isAccepted: (request: request) => Promise<boolean>; // Callback provide request ctrl before accept or reject new host connection
 
-  private wsServer: WsServer = new WsServer();   // Websocket server instance
-  private wsHttpServer: http.Server = http.createServer();   // Websocket http server instance
-  
+  private wsServer: WsServer = new WsServer(); // Websocket server instance
+  private wsHttpServer: http.Server = http.createServer(); // Websocket http server instance
+
   private proxyServer: httpProxy = httpProxy.createProxyServer({}); // Proxy server instance
   private proxyHttpServer: http.Server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -36,10 +42,10 @@ class ProxyServer {
 
   /**
    * @constructor This provide instance of Inteli-proxy server
-   * @param cb - Callback provide request ctrl before accept or reject new host connection
+   * @param cb - Callback provide request ctrl before accept or reject new host connection (LIKE CORS)
    */
-  constructor(cb: (request: request) => boolean) {
-    this.isAuthentified = cb;
+  constructor(cb: (request: request) => Promise<boolean>) {
+    this.isAccepted = cb;
     this.wsServer.on('request', this.wsServerRequestHandler);
     this.wsServer.on('connect', this.wsServerConnectHandler);
     this.wsServer.on('close', this.wsServerCloseHandler);
@@ -50,11 +56,8 @@ class ProxyServer {
    * @returns {Host} Target Host or null
    */
   private getTargetHost(): Host {
-    let connection: connection = this.hostsQueue.shift();
-    while (
-      !this.hostsIndexMap.has(connection) &&
-      this.hostsQueue.length > 0
-    ) {
+    let connection: Connection = this.hostsQueue.shift();
+    while (!this.hostsIndexMap.has(connection) && this.hostsQueue.length > 0) {
       connection = this.hostsQueue.shift();
     } // Looking for available host
 
@@ -118,16 +121,16 @@ class ProxyServer {
    * @method ProxyServer#wsServerRequestHandler WS server request event handler
    * @param request WS HTTP request object
    */
-  private wsServerRequestHandler(request: request) {
-    if (!this.isAuthentified(request)) {
-      request.reject(); // Reject all unauthentified client
+  private async wsServerRequestHandler(request: request) {
+    if (!(await this.isAccepted(request))) {
+      request.reject(401); // Reject all unauthaurized client
       console.log(
         `[${new Date()}] Connection reject from ws client ${request.origin}.`
       );
       return;
     }
-
-    const connection: connection = request.accept(null, request.origin); // Accept client connection and obtain connection object
+    // TODO CTRL AUTHENTIFICATION
+    const connection: Connection = request.accept(null, request.origin); // Accept client connection and obtain connection object
 
     // <=== Handling client connection events
     connection.on('message', (data: IMessage) => {
@@ -146,7 +149,7 @@ class ProxyServer {
    * @method ProxyServer#wsServerConnectHandler WS server connect event handler
    * @param connection WS client connection object
    */
-  private wsServerConnectHandler(connection: connection) {
+  private wsServerConnectHandler(connection: Connection) {
     console.log(`New connection from ${connection.remoteAddress}`);
   }
 
@@ -156,7 +159,11 @@ class ProxyServer {
    * @param reason Client close reason code
    * @param desc Client close reason description
    */
-  private wsServerCloseHandler(connection: connection, reason: number, desc: string) {
+  private wsServerCloseHandler(
+    connection: Connection,
+    reason: number,
+    desc: string
+  ) {
     console.log(
       `Closed connection from ${connection.remoteAddress}, reason : ${reason} - ${desc}`
     );
@@ -167,14 +174,22 @@ class ProxyServer {
    * @param connection WS client connection object
    * @param data WS client connection IMessage object
    */
-  private wsCliMessageHandler(connection: connection, data: IMessage) {
-    const event: ProxyEvent = JSON.parse(data.utf8Data);
-    if (event.header.action === ActionEnum.open) {
-      this.hostsIndexMap.set(connection, event.payload);
-      this.hostsQueue.push(connection);
-    }
-    if (event.header.action === ActionEnum.close) {
+  private wsCliMessageHandler(connection: Connection, data: IMessage) {
+    if ((data.type = EventEncode.utf8)) {
+      const event: ClientEvent = JSON.parse(data.utf8Data);
+      // TODO verif authentification
+      if (event.header.action === ActionEnum.open) {
+        this.hostsIndexMap.set(connection, event.payload);
+        this.hostsQueue.push(connection);
+      } else if (event.header.action === ActionEnum.close) {
+        this.hostsIndexMap.delete(connection);
+      } else {
+        this.hostsIndexMap.delete(connection);
+        connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
+      }
+    } else {
       this.hostsIndexMap.delete(connection);
+      connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
     }
   }
 
@@ -184,7 +199,11 @@ class ProxyServer {
    * @param code WS client connection close reason code
    * @param desc WS client connection close reason description
    */
-  private wsCliCloseHandler(connection: connection, code: number, desc: string) {
+  private wsCliCloseHandler(
+    connection: Connection,
+    code: number,
+    desc: string
+  ) {
     console.log(
       `Closed connection from ${connection.remoteAddress}, reason : ${code} - ${desc}`
     );
@@ -196,7 +215,7 @@ class ProxyServer {
    * @param connection WS client connection object
    * @param error WS client connection Error Object
    */
-  private wsCliErrorHandler(connection: connection, error: Error) {
+  private wsCliErrorHandler(connection: Connection, error: Error) {
     console.error(connection.remoteAddress, error);
     throw error;
   }

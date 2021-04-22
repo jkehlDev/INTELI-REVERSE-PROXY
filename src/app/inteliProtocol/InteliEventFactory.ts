@@ -1,17 +1,18 @@
-import ProxyEvent from './proxyEvent/ProxyEvent';
-import ActionEnum from './EventActions';
-import TypeEnum from './EventTypes';
+import ClientEvent from 'app/inteliProtocol/clientEvent/ClientEvent';
+import ActionEnum from 'app/inteliProtocol/EventActions';
+import TypeEnum from 'app/inteliProtocol/EventTypes';
 
 class EventFactory {
   static makeProxyEvent(
     action: ActionEnum.open | ActionEnum.close,
-    token: string,
+    agentId: string,
+    signature: string,
     host: string,
     port: number
-  ): Readonly<ProxyEvent> {
+  ): Readonly<ClientEvent> {
     return {
       header: { type: TypeEnum.proxy, action },
-      authentification: { token },
+      authentification: { agentId, signature },
       payload: { host, port },
     };
   }

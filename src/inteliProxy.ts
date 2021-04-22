@@ -11,12 +11,11 @@ const result = dotenv.config();
 if (result.error) {
   throw result.error;
 }
-console.log(result.parsed);
 
 // Provide Inteli proxy server Class
-import ProxyServer from './app/proxyServer';
+import ProxyServer from './app/proxyServer/ProxyServer';
 
 // Provide Inteli proxy client server Class
-//const inteliClient = require("./app/proxyClient");
+import ProxyClient from './app/proxyClient/ProxyClient';
 
-export default ProxyServer;
+export default { ProxyServer, ProxyClient };

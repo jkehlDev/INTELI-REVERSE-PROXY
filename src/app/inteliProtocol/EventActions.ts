@@ -1,5 +1,5 @@
 enum ActionEnum {
-    open = "open",
-    close = "close",
-} 
+  open = 'open',
+  close = 'close',
+}
 export default ActionEnum;
