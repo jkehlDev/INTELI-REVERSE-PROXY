@@ -20,7 +20,7 @@ function authPayloadFactory(clientId: string): AuthPayload {
  */
 export class JWTAuthHandler {
   private static TOKEN_REDIS_PREFIX: string = 'TOKENBLKLST';
-  private static AUTH_REDIS_PREFIX: string = 'USERONLINE';
+  private static AUTH_REDIS_PREFIX: string = 'CLIENTONLINE';
   private static TOKEN_DURATION: number =
     parseInt(process.env.TOKEN_DURATION, 10) || 1000;
   private static USER_ONLINE_DURATION: number =
