@@ -5,7 +5,7 @@ import { connection, IMessage, request, server as WsServer } from 'websocket';
 import wsConfig from './wsConfig.json';
 import Host from '../inteliProtocol/proxyEvent/Host';
 import ProxyEvent from '../inteliProtocol/proxyEvent/ProxyEvent';
-import ActionEnum from '../inteliProtocol/proxyEvent/ProxyEventActions';
+import ActionEnum from '../inteliProtocol/EventActions';
 // ==>
 
 /**

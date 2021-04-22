@@ -1,17 +1,16 @@
 import ProxyEvent from './proxyEvent/ProxyEvent';
-import ActionEnum from './proxyEvent/ProxyEventActions';
-import TypeEnum from './proxyEvent/ProxyEventTypes';
+import ActionEnum from './EventActions';
+import TypeEnum from './EventTypes';
 
 class EventFactory {
   static makeProxyEvent(
-    type: TypeEnum,
-    action: ActionEnum,
+    action: ActionEnum.open | ActionEnum.close,
     token: string,
     host: string,
     port: number
-  ): ProxyEvent {
+  ): Readonly<ProxyEvent> {
     return {
-      header: { type, action },
+      header: { type: TypeEnum.proxy, action },
       authentification: { token },
       payload: { host, port },
     };
