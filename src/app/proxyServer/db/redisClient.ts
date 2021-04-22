@@ -1,8 +1,8 @@
 import redis from 'redis';
 
 class RedisCli {
-  client: redis.RedisClient = null;
-  DEFAULT_PREFIX: string = 'GENDATA';
+  private client: redis.RedisClient = null;
+  private static DEFAULT_PREFIX: string = 'GENDATA';
 
   /**
    * @constructor Provide instance of redis client
@@ -43,7 +43,7 @@ class RedisCli {
     seconds: number,
     value: string,
     key: string,
-    prefix: string = this.DEFAULT_PREFIX
+    prefix: string = RedisCli.DEFAULT_PREFIX
   ): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
       this.has(key, prefix)
@@ -75,7 +75,7 @@ class RedisCli {
    * @param prefix Prefix key (default 'DATA')
    * @returns True if pair exist in store, false otherwise
    */
-  has(key: string, prefix: string = this.DEFAULT_PREFIX): Promise<boolean> {
+  has(key: string, prefix: string = RedisCli.DEFAULT_PREFIX): Promise<boolean> {
     return new Promise((resolve, reject) => {
       this.client.exists(`${prefix}#${key}`, (error: Error, state: number) => {
         if (error) {
@@ -92,7 +92,7 @@ class RedisCli {
    * @param prefix Prefix key (default 'DATA')
    * @returns Target value if key exist in store, undefine otherwise
    */
-  get(key: string, prefix: string = this.DEFAULT_PREFIX): Promise<string> {
+  get(key: string, prefix: string = RedisCli.DEFAULT_PREFIX): Promise<string> {
     return new Promise((resolve, reject) => {
       this.has(key, prefix)
         .then((has: boolean) => {
@@ -120,7 +120,7 @@ class RedisCli {
    * @param prefix Prefix key (default 'DATA')
    * @returns True if pair deleted in store, false otherwise
    */
-  delete(key: string, prefix: string = this.DEFAULT_PREFIX): Promise<boolean> {
+  delete(key: string, prefix: string = RedisCli.DEFAULT_PREFIX): Promise<boolean> {
     return new Promise((resolve, reject) => {
       this.has(key, prefix)
         .then((has: boolean) => {
