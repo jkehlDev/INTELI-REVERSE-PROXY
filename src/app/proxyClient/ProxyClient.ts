@@ -17,11 +17,19 @@ import InteliSHA256, {
 import fs from 'fs';
 // ==>
 
+enum ServerStates {
+  CLOSE,
+  PENDING,
+  OPEN,
+}
+
 /**
  * @class ProxyClient - This provide Inteli-reverse-proxy client class
  * @version 1.00
  */
 class ProxyClient {
+  private state: ServerStates = ServerStates.CLOSE; // Server current state
+
   private wsClient: WsClient = new WsClient(); // Websocket client instance
   private httpServer: http.Server | https.Server; // Http/Https server instance
 
@@ -78,7 +86,8 @@ class ProxyClient {
    * @method ProxyClient#Start Start Inteli-reverse-proxy client
    */
   public start() {
-    if (this.connection === null) {
+    if (this.state === ServerStates.CLOSE) {
+      this.state = ServerStates.PENDING;
       const headers: http.OutgoingHttpHeaders = {
         Authorization: `INTELI-SHA256 AgentId=${this.inteliSHA256.agentId}, Signature=${this.inteliSHA256.signature}`,
       };
@@ -87,9 +96,11 @@ class ProxyClient {
         'inteli',
         'localhost',
         headers
-      );
+      );      
     } else {
-      console.warn(`Starting client aborded because client already start.`);
+      console.warn(
+        `Starting client aborded because client already start or in pending situation`
+      );
     }
   }
 
@@ -97,17 +108,20 @@ class ProxyClient {
    * @method ProxyClient#Stop Stop Inteli-reverse-proxy client
    */
   public stop() {
-    if (this.connection !== null) {
+    if (this.state === ServerStates.OPEN) {
+      this.state = ServerStates.PENDING;
       this.connection.close();
-    } else {
-      console.warn(`Stopping client aborded because client already stop.`);
-    }
-    if (this.httpServer.listening) {
       setTimeout(() => {
-        this.httpServer.close((err?: Error) => {
-          this.httpServerCloseHandler(this, err);
-        });
-      }, wsConfig.closeTimeout);
+        if (this.httpServer.listening) {
+          this.httpServer.close((err?: Error) => {
+            this.httpServerCloseHandler(this, err);
+          });
+        }
+      }, wsConfig.closeTimeout);      
+    } else {
+      console.warn(
+        `Stopping client aborded because client already stop or in pending situation`
+      );
     }
   }
 
@@ -118,6 +132,8 @@ class ProxyClient {
    */
   private wsClientConnectFailedHandler(_this: ProxyClient, err: Error) {
     console.error(err);
+    this.state = ServerStates.CLOSE;
+    throw err;
   }
 
   /**
@@ -151,14 +167,7 @@ class ProxyClient {
    */
   private wsClientCloseHandler(_this: ProxyClient, code: number, desc: string) {
     console.log(`WebSocket client disconnected, reason : ${code} - ${desc}`);
-    _this.connection = null;
-    if (_this.httpServer.listening) {
-      setTimeout(() => {
-        _this.httpServer.close((err?: Error) => {
-          _this.httpServerCloseHandler(_this, err);
-        });
-      }, wsConfig.closeTimeout);
-    }
+    _this.stop();
   }
 
   /**
@@ -182,6 +191,8 @@ class ProxyClient {
    */
   private wsClientErrorHandler(_this: ProxyClient, err: Error) {
     console.error(err);
+    _this.stop();
+    throw err;
   }
 
   /**
@@ -198,6 +209,7 @@ class ProxyClient {
     );
     console.log(`Send <open> instruction to Inteli-reverse-proxy`);
     _this.connection.send(JSON.stringify(openProxyEvent));
+    this.state = ServerStates.OPEN;
   }
 
   /**
@@ -210,6 +222,7 @@ class ProxyClient {
       console.error(err);
     } else {
       console.log(`HTTP server close.`);
+      this.state = ServerStates.CLOSE;
     }
   }
 }

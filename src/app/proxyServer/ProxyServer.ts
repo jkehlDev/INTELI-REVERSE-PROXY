@@ -19,11 +19,18 @@ import {
 } from 'app/inteliProtocol/Authentification/InteliSHA256';
 // ==>
 
+enum ServerStates {
+  CLOSE,
+  PENDING,
+  OPEN,
+}
+
 /**
  * @class ProxyServer - This provide an Inteli-reverse-proxy server class
  * @version 1.00
  */
 class ProxyServer {
+  private state: ServerStates = ServerStates.CLOSE; // Current server state
   private hostsIndexMap: WeakMap<Connection, Host>; // Indexed host collection on connection object (connection obj as index key)
   private hostsQueue: Array<Connection>; // Load balancer hosts connection queue
 
@@ -37,7 +44,7 @@ class ProxyServer {
   private proxyHttpServer: http.Server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
       const host: Host = this.getTargetHost();
-      if (host) {
+      if (host !== null) {
         this.proxyServer.web(req, res, { target: host });
       } else {
         res.writeHead(503, { 'Content-Type': 'text/html' });
@@ -83,6 +90,74 @@ class ProxyServer {
   }
 
   /**
+   * @method ProxyServer#start Start Inteli Proxy server
+   */
+  public start() {
+    if (this.state === ServerStates.CLOSE) {
+      this.state = ServerStates.PENDING;
+      this.hostsIndexMap = new WeakMap();
+      this.hostsQueue = new Array(0);
+      console.log('Starting websocket proxy server ...');
+      this.wsServer.mount({
+        httpServer: this.wsHttpServer,
+        ...wsConfig,
+      });
+      this.wsHttpServer.listen(process.env.PROXY_WS_PORT, () => {
+        console.log(
+          `Websocket proxy server start on port : ${process.env.PROXY_WS_PORT}`
+        );
+      });
+      this.proxyHttpServer.listen(process.env.PROXY_PORT, () => {
+        console.log(
+          `Reverse proxy server start on port : ${process.env.PROXY_PORT}`
+        );
+        this.state = ServerStates.OPEN;
+      });
+    } else {
+      console.warn(
+        `Starting server aborded because server already start or in pending situation`
+      );
+    }
+  }
+
+  /**
+   * @method ProxyServer#stop Stop Inteli Proxy server
+   */
+  public stop() {
+    if (this.state === ServerStates.OPEN) {
+      this.state = ServerStates.PENDING;
+      if (this.proxyHttpServer.listening) {
+        this.proxyHttpServer.close((err: Error) => {
+          if (err) {
+            console.error(err);
+          } else {
+            console.log(
+              `Reverse proxy server stop on port : ${process.env.PROXY_PORT}`
+            );
+          }
+        });
+      }
+      this.wsServer.shutDown();
+      if (this.wsHttpServer.listening) {
+        this.wsHttpServer.close((err: Error) => {
+          if (err) {
+            console.error(err);
+          } else {
+            console.log(
+              `Websocket proxy server stop on port : ${process.env.PROXY_WS_PORT}`
+            );
+            this.state = ServerStates.CLOSE;
+          }
+        });
+      }
+    } else {
+      console.warn(
+        `Stopping client aborded because client already stop or in pending situation`
+      );
+    }
+  }
+
+  /**
    * @method ProxyServer#Host Get and return available host
    * @returns {Host} Target Host or null
    */
@@ -98,54 +173,6 @@ class ProxyServer {
     } else {
       return null;
     }
-  }
-
-  /**
-   * @method ProxyServer#start Start Inteli Proxy server
-   */
-  public start() {
-    this.hostsIndexMap = new WeakMap();
-    this.hostsQueue = new Array(0);
-    console.log('Starting websocket proxy server ...');
-    this.wsServer.mount({
-      httpServer: this.wsHttpServer,
-      ...wsConfig,
-    });
-    this.wsHttpServer.listen(process.env.PROXY_WS_PORT, () => {
-      console.log(
-        `Websocket proxy server start on port : ${process.env.PROXY_WS_PORT}`
-      );
-    });
-    this.proxyHttpServer.listen(process.env.PROXY_PORT, () => {
-      console.log(
-        `Reverse proxy server start on port : ${process.env.PROXY_PORT}`
-      );
-    });
-  }
-
-  /**
-   * @method ProxyServer#stop Stop Inteli Proxy server
-   */
-  public stop() {
-    this.proxyHttpServer.close((err: Error) => {
-      if (err) {
-        console.error(err);
-      } else {
-        console.log(
-          `Reverse proxy server stop on port : ${process.env.PROXY_PORT}`
-        );
-      }
-    });
-    this.wsServer.shutDown();
-    this.wsHttpServer.close((err: Error) => {
-      if (err) {
-        console.error(err);
-      } else {
-        console.log(
-          `Websocket proxy server stop on port : ${process.env.PROXY_WS_PORT}`
-        );
-      }
-    });
   }
 
   /**
@@ -170,7 +197,6 @@ class ProxyServer {
     }
 
     const connection: Connection = request.accept('inteli', request.origin); // Accept client connection and obtain connection object
-
     // <=== Handling client connection events
     connection.on('message', (data: IMessage) => {
       _this.wsCliMessageHandler(_this, connection, data);
@@ -206,8 +232,9 @@ class ProxyServer {
     reason: number,
     desc: string
   ) {
+    _this.hostsIndexMap.delete(connection);
     console.log(
-      `Closed connection from ${connection.remoteAddress}, reason : ${reason} - ${desc}`
+      `Server event - Closed connection from ${connection.remoteAddress}, reason : ${reason} - ${desc}`
     );
   }
 
@@ -265,10 +292,10 @@ class ProxyServer {
     code: number,
     desc: string
   ) {
-    console.log(
-      `Closed connection from ${connection.remoteAddress}, reason : ${code} - ${desc}`
-    );
     _this.hostsIndexMap.delete(connection);
+    console.log(
+      `Connection event - Closed connection from ${connection.remoteAddress}, reason : ${code} - ${desc}`
+    );
   }
 
   /**
@@ -282,8 +309,9 @@ class ProxyServer {
     connection: Connection,
     error: Error
   ) {
+    _this.hostsIndexMap.delete(connection);
     console.error(connection.remoteAddress, error);
-    throw error;
+    connection.close(Connection.CLOSE_REASON_PROTOCOL_ERROR, 'PROTOCOL_ERROR');
   }
 }
 export default ProxyServer;
