@@ -1,5 +1,9 @@
 // <== Imports externals modules
-import { connection as Connection, client as WsClient, IMessage } from 'websocket';
+import {
+  connection as Connection,
+  client as WsClient,
+  IMessage,
+} from 'websocket';
 import ClientEvent from 'app/inteliProtocol/clientEvent/ClientEvent';
 import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
 import ActionEnum from 'app/inteliProtocol/EventActions';
@@ -7,6 +11,10 @@ import http from 'http';
 import https from 'https';
 import EventEncode from 'app/inteliProtocol/EventEncode';
 import wsConfig from 'app/proxyServer/wsConfig.json';
+import InteliSHA256, {
+  InteliSHA256Factory,
+} from 'app/inteliProtocol/Authentification/InteliSHA256';
+import fs from 'fs';
 // ==>
 
 /**
@@ -16,6 +24,11 @@ import wsConfig from 'app/proxyServer/wsConfig.json';
 class ProxyClient {
   private wsClient: WsClient = new WsClient(); // Websocket client instance
   private httpServer: http.Server | https.Server; // Http/Https server instance
+
+  // Authentification agentId & signature
+  private inteliSHA256: InteliSHA256;
+  // TIPS https://nodejs.org/api/crypto.html#crypto_class_sign
+
   private host: string; // Http/Https server host domain
   private port: number; // Http/Https server port
   private connection: Connection = null; // Websocket client connection instance
@@ -24,31 +37,55 @@ class ProxyClient {
    * @constructor This provide instance Inteli-reverse-proxy client (back-end http server)
    * @param host - http server host to provide acces to the Inteli-reverse-proxy server
    * @param port - http server port to provide acces to the Inteli-reverse-proxy server
+   * @param agentId - Client identifiant
+   * @param clientPrivateKeyFileName  - Client private key Cert file name
+   * @param httpServer - CLient http/https server
    */
   constructor(
     host: string,
     port: number,
+    agentId: string,
+    clientPrivateKeyFileName: string,
     httpServer: http.Server | https.Server
   ) {
     this.host = host;
     this.port = port;
+    try {
+      if (fs.existsSync(`${process.cwd()}/${clientPrivateKeyFileName}.pem`)) {
+        this.inteliSHA256 = InteliSHA256Factory.makeInteliSHA256(
+          agentId,
+          clientPrivateKeyFileName
+        );
+      } else {
+        throw new Error(
+          `client private key don't exist : ${process.cwd()}/${clientPrivateKeyFileName}.pem`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
     this.httpServer = httpServer;
-    this.wsClient.on('connectFailed', this.wsClientConnectFailedHandler);
-    this.wsClient.on('connect', this.wsClientConnectHandler);
+    this.wsClient.on('connectFailed', (err: Error) => {
+      this.wsClientConnectFailedHandler(this, err);
+    });
+    this.wsClient.on('connect', (connection: Connection) => {
+      this.wsClientConnectHandler(this, connection);
+    });
   }
 
   /**
    * @method ProxyClient#Start Start Inteli-reverse-proxy client
    */
-  start() {
+  public start() {
     if (this.connection === null) {
-      // TODO ENCRYPTED SHA256 signed UserId
-      // https://nodejs.org/api/crypto.html#crypto_class_sign
-      const headers: http.OutgoingHttpHeaders = { Authorization: 'INTELI-SHA256 AgentId=<agentId>, Signature=<sha256 signature>' };
+      const headers: http.OutgoingHttpHeaders = {
+        Authorization: `INTELI-SHA256 AgentId=${this.inteliSHA256.agentId}, Signature=${this.inteliSHA256.signature}`,
+      };
       this.wsClient.connect(
-        `ws://${process.env.PROXY_HOST}/${process.env.PROXY_WS_PORT}`,
-        null,
-        null,
+        `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
+        'inteli',
+        'localhost',
         headers
       );
     } else {
@@ -59,7 +96,7 @@ class ProxyClient {
   /**
    * @method ProxyClient#Stop Stop Inteli-reverse-proxy client
    */
-  stop() {
+  public stop() {
     if (this.connection !== null) {
       this.connection.close();
     } else {
@@ -67,53 +104,69 @@ class ProxyClient {
     }
     if (this.httpServer.listening) {
       setTimeout(() => {
-        this.httpServer.close(this.httpServerCloseHandler);
+        this.httpServer.close((err?: Error) => {
+          this.httpServerCloseHandler(this, err);
+        });
       }, wsConfig.closeTimeout);
     }
   }
 
   /**
    * @method ProxyClient#wsClientConnectFailedHandler Deal with error from the connection attempt
+   * @param _this Class instance context
    * @param err Error send by server when client attempt to connect
    */
-  wsClientConnectFailedHandler(err: Error) {
+  private wsClientConnectFailedHandler(_this: ProxyClient, err: Error) {
     console.error(err);
   }
 
   /**
    * @method ProxyClient#wsClientConnectHandler That will occured if connection succeeds
+   * @param _this Class instance context
    * @param connection WS Client connection object
    */
-  wsClientConnectHandler(connection: Connection) {
-    this.connection = connection;
-    connection.on('error', this.wsClientErrorHandler);
-    connection.on('close', this.wsClientCloseHandler);
-    connection.on('message', this.wsClientMessageHandler);
+  private wsClientConnectHandler(_this: ProxyClient, connection: Connection) {
+    _this.connection = connection;
+    connection.on('error', (err: Error) => {
+      _this.wsClientErrorHandler(_this, err);
+    });
+    connection.on('close', (code: number, desc: string) => {
+      _this.wsClientCloseHandler(_this, code, desc);
+    });
+    connection.on('message', (data: IMessage) => {
+      _this.wsClientMessageHandler(_this, data);
+    });
 
     console.log('Client connection to Inteli-reverse-proxy server success');
-    this.httpServer.listen(this.port, this.httpServerListenHandler);
+    _this.httpServer.listen(_this.port, () => {
+      _this.httpServerListenHandler(_this);
+    });
   }
 
   /**
    * @method ProxyClient#wsClientCloseHandler That will occured if connection close by server
+   * @param _this Class instance context
    * @param code Close reason code send by server
    * @param desc Close description reason send by server
    */
-  private wsClientCloseHandler(code: number, desc: string) {
+  private wsClientCloseHandler(_this: ProxyClient, code: number, desc: string) {
     console.log(`WebSocket client disconnected, reason : ${code} - ${desc}`);
-    this.connection = null;
-    if (this.httpServer.listening) {
+    _this.connection = null;
+    if (_this.httpServer.listening) {
       setTimeout(() => {
-        this.httpServer.close(this.httpServerCloseHandler);
+        _this.httpServer.close((err?: Error) => {
+          _this.httpServerCloseHandler(_this, err);
+        });
       }, wsConfig.closeTimeout);
     }
   }
 
   /**
    * @method ProxyClient#wsClientMessageHandler That will occured if message send by server
+   * @param _this Class instance context
    * @param data Message data content
    */
-  private wsClientMessageHandler(data: IMessage) {
+  private wsClientMessageHandler(_this: ProxyClient, data: IMessage) {
     if (data.type === EventEncode.utf8) {
       console.log(`Receive message from server : ${data.utf8Data}`);
     }
@@ -124,33 +177,35 @@ class ProxyClient {
 
   /**
    * @method ProxyClient#wsClientErrorHandler That will occured if an error send by server
+   * @param _this Class instance context
    * @param err Error send by server
    */
-  private wsClientErrorHandler(err: Error) {
+  private wsClientErrorHandler(_this: ProxyClient, err: Error) {
     console.error(err);
   }
 
   /**
    * @method ProxyClient#httpServerListenHandler That will occured if http server start listening
+   * @param _this Class instance context
    */
-  private httpServerListenHandler() {
-    console.log(`HTTP server is listening on port [${this.port}]`);
+  private httpServerListenHandler(_this: ProxyClient) {
+    console.log(`HTTP server is listening on port [${_this.port}]`);
     const openProxyEvent: ClientEvent = InteliEventFactory.makeProxyEvent(
       ActionEnum.open,
-      '', // TODO agetId and signature SHA 256
-      '',
-      this.host,
-      this.port
+      _this.inteliSHA256,
+      _this.host,
+      _this.port
     );
     console.log(`Send <open> instruction to Inteli-reverse-proxy`);
-    this.connection.send(JSON.stringify(openProxyEvent));
+    _this.connection.send(JSON.stringify(openProxyEvent));
   }
 
   /**
    * @method ProxyClient#httpServerListenHandler That will occured if http server close
+   * @param _this Class instance context
    * @param err Error if error occured
    */
-  private httpServerCloseHandler(err?: Error) {
+  private httpServerCloseHandler(_this: ProxyClient, err?: Error) {
     if (err) {
       console.error(err);
     } else {
