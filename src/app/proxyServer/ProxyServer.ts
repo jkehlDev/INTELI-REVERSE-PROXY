@@ -1,5 +1,6 @@
 // <== Imports externals modules
 import http from 'http';
+import https from 'https';
 import httpProxy from 'http-proxy';
 import fs from 'fs';
 import {
@@ -16,7 +17,7 @@ import EventEncode from 'app/inteliProtocol/enums/EventEncode';
 import {
   inteliSHA256CheckAuthorizationHeader,
   inteliSHA256CheckValidity,
-} from 'app/inteliProtocol/Authentification/InteliSHA256';
+} from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import logger from 'app/tools/logger';
 // ==>
 
@@ -36,45 +37,46 @@ class ProxyServer {
   private hostsQueue: Array<Connection>; // Load balancer hosts connection queue
 
   private checkOrigin: (origin: string) => Promise<boolean>; // Callback provide request ctrl before accept or reject new host connection
-  private clientPublicKeyFileName: string; // Proxy client public key cert
 
   private wsServer: WsServer = new WsServer(); // Websocket server instance
-  private wsHttpServer: http.Server = http.createServer(); // Websocket http server instance
+  private wsHttpServer: http.Server | https.Server; // Websocket http server instance
 
   private proxyServer: httpProxy = httpProxy.createProxyServer({}); // Proxy server instance
-  private proxyHttpServer: http.Server = http.createServer(
-    (req: http.IncomingMessage, res: http.ServerResponse) => {
-      const host: Host = this.getTargetHost();
-      if (host !== null) {
-        this.proxyServer.web(req, res, { target: host });
-      } else {
-        res.writeHead(503, { 'Content-Type': 'text/html' });
-        res.end('Service unavailable', 'utf-8');
-      }
-    }
-  ); // Proxy http server instance
+  private proxyHttpServer: http.Server | https.Server; // Proxy http server instance
 
   /**
    * @constructor This provide instance of Inteli-proxy server
    * @param cb - Callback provide origin check before accept new host connection (For CORS)
-   * @param clientPublicKeyFileName - Websocket client RSA public key validity check
+   * @param sysAdminPublicKeyFileName - Websocket client RSA public key validity check
    */
-  constructor(
-    cb: (origin: string) => Promise<boolean>,
-    clientPublicKeyFileName: string
-  ) {
+  constructor(cb: (origin: string) => Promise<boolean>) {
     this.checkOrigin = async (origin) => await cb(origin);
     try {
-      if (fs.existsSync(`${process.cwd()}/${clientPublicKeyFileName}.pem`)) {
-        this.clientPublicKeyFileName = clientPublicKeyFileName;
-      } else {
-        logger.error(
-          `An error occured during instanciation of Inteli reverse-proxy Web server. RSA public key not found at ${process.cwd()}/${clientPublicKeyFileName}.pem`
-        );
-        throw new Error(
-          `ERROR - [${new Date()}] Web server RSA public key not found at ${process.cwd()}/${clientPublicKeyFileName}.pem`
-        );
-      }
+      this.wsServer.on('request', (request: Request) => {
+        this.wsServerRequestHandler(this, request);
+      });
+      this.wsServer.on('connect', (connection: Connection) => {
+        this.wsServerConnectHandler(this, connection);
+      });
+      this.wsServer.on(
+        'close',
+        (connection: Connection, reason: number, desc: string) => {
+          this.wsServerCloseHandler(this, connection, reason, desc);
+        }
+      );
+
+      this.wsHttpServer = http.createServer();
+      this.proxyHttpServer = http.createServer(
+        (req: http.IncomingMessage, res: http.ServerResponse) => {
+          const host: Host = this.getTargetHost();
+          if (host !== null) {
+            this.proxyServer.web(req, res, { target: host });
+          } else {
+            res.writeHead(503, { 'Content-Type': 'text/html' });
+            res.end('Service unavailable', 'utf-8');
+          }
+        }
+      );
     } catch (err) {
       logger.error(
         `An error occured during instanciation of Inteli reverse-proxy server.
@@ -84,18 +86,6 @@ class ProxyServer {
       );
       throw err;
     }
-    this.wsServer.on('request', (request: Request) => {
-      this.wsServerRequestHandler(this, request);
-    });
-    this.wsServer.on('connect', (connection: Connection) => {
-      this.wsServerConnectHandler(this, connection);
-    });
-    this.wsServer.on(
-      'close',
-      (connection: Connection, reason: number, desc: string) => {
-        this.wsServerCloseHandler(this, connection, reason, desc);
-      }
-    );
   }
 
   /**
@@ -219,8 +209,7 @@ class ProxyServer {
     if (
       !(await _this.checkOrigin(request.origin)) ||
       !inteliSHA256CheckAuthorizationHeader(
-        request.httpRequest.headers.authorization,
-        _this.clientPublicKeyFileName
+        request.httpRequest.headers.authorization
       )
     ) {
       request.reject(401); // Reject all unauthaurized client
@@ -295,12 +284,7 @@ class ProxyServer {
   ) {
     if ((data.type = EventEncode.utf8)) {
       const event: WebServerEvent = JSON.parse(data.utf8Data);
-      if (
-        inteliSHA256CheckValidity(
-          event.authentification,
-          _this.clientPublicKeyFileName
-        )
-      ) {
+      if (inteliSHA256CheckValidity(event.authentification)) {
         try {
           if (event.header.action === ActionEnum.open) {
             _this.hostsIndexMap.set(connection, event.payload);

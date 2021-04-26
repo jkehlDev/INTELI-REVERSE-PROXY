@@ -1,20 +1,33 @@
 import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
 import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
-import InteliSHA256 from './Authentification/InteliSHA256';
+import InteliAgentSHA256 from './Authentification/InteliAgentSHA256';
+import SysAdminEvent from './sysAdminEvent/SysAdminEvent';
 
 class EventFactory {
   static makeWebServerEvent(
     action: ActionEnum.open | ActionEnum.close,
-    inteliSHA256: InteliSHA256,
+    InteliAgentSHA256: InteliAgentSHA256,
     version: string,
     host: string,
     port: number
   ): Readonly<WebServerEvent> {
     return {
       header: { type: TypeEnum.webServer, action },
-      authentification: inteliSHA256,
-      payload: { hostId: inteliSHA256.agentId, version, host, port },
+      authentification: InteliAgentSHA256,
+      payload: { hostId: InteliAgentSHA256.agentId, version, host, port },
+    };
+  }
+  static makeSysAdminEvent(
+    action: ActionEnum.add | ActionEnum.remove,
+    signature: string,
+    hostId: string,
+    publicKey: string
+  ): Readonly<SysAdminEvent> {
+    return {
+      header: { type: TypeEnum.sysadmin, action },
+      authentification: { agentId: 'sysadmin', signature },
+      payload: { hostId, publicKey },
     };
   }
 }

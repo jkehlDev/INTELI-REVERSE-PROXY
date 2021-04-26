@@ -11,9 +11,9 @@ import http from 'http';
 import https from 'https';
 import EventEncode from 'app/inteliProtocol/enums/EventEncode';
 import inteliConfig from 'inteliProxyConfig.json';
-import InteliSHA256, {
+import InteliAgentSHA256, {
   InteliSHA256Factory,
-} from 'app/inteliProtocol/Authentification/InteliSHA256';
+} from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import fs from 'fs';
 import logger from 'app/tools/logger';
 // ==>
@@ -35,9 +35,8 @@ class ProxyWebServer {
   private httpServer: http.Server | https.Server; // Http/Https server instance
 
   // Authentification agentId & signature
-  private inteliSHA256: InteliSHA256;
-  // TIPS https://nodejs.org/api/crypto.html#crypto_class_sign
-
+  private inteliAgentSHA256: InteliAgentSHA256;
+  
   private host: string; // Http/Https server host domain
   private port: number; // Http/Https server port
   private connection: Connection = null; // Websocket client connection instance
@@ -47,32 +46,20 @@ class ProxyWebServer {
    * @param host - Inteli reverse-proxy web server host
    * @param port - Inteli reverse-proxy web server port
    * @param agentId - Inteli reverse-proxy web server identifiant
-   * @param clientPrivateKeyFileName  - Inteli reverse-proxy web server cert private key file name
    * @param httpServer - Inteli reverse-proxy web server (http/https)
    */
   constructor(
     host: string,
     port: number,
     agentId: string,
-    clientPrivateKeyFileName: string,
     httpServer: http.Server | https.Server
   ) {
     this.host = host;
     this.port = port;
     try {
-      if (fs.existsSync(`${process.cwd()}/${clientPrivateKeyFileName}.pem`)) {
-        this.inteliSHA256 = InteliSHA256Factory.makeInteliSHA256(
-          agentId,
-          clientPrivateKeyFileName
-        );
-      } else {
-        logger.error(
-          `An error occured during instanciation of Inteli reverse-proxy Web server. RSA private key not found at ${process.cwd()}/${clientPrivateKeyFileName}.pem`
-        );
-        throw new Error(
-          `ERROR - [${new Date()}] Web server RSA private key not found at ${process.cwd()}/${clientPrivateKeyFileName}.pem`
-        );
-      }
+      this.inteliAgentSHA256 = InteliSHA256Factory.makeInteliAgentSHA256(
+        agentId
+      );
     } catch (err) {
       logger.error(
         `An error occured during instanciation of Inteli reverse-proxy web server.
@@ -103,7 +90,7 @@ class ProxyWebServer {
       this.state = ServerStates.PENDING;
 
       const headers: http.OutgoingHttpHeaders = {
-        Authorization: `INTELI-SHA256 AgentId=${this.inteliSHA256.agentId}, Signature=${this.inteliSHA256.signature}`,
+        Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
       };
 
       this.wsClient.connect(
@@ -270,7 +257,7 @@ class ProxyWebServer {
     );
     const openProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
       ActionEnum.open,
-      _this.inteliSHA256,
+      _this.inteliAgentSHA256,
       inteliConfig.webserver.version,
       _this.host,
       _this.port
