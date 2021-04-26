@@ -1,5 +1,5 @@
-import ActionEnum from 'app/inteliProtocol/EventActions';
-import TypeEnum from 'app/inteliProtocol/EventTypes';
+import ActionEnum from 'app/inteliProtocol/enums/EventActions';
+import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
 
 interface InteliEvent<
   Type extends TypeEnum,

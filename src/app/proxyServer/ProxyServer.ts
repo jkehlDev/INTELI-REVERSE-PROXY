@@ -8,11 +8,11 @@ import {
   request as Request,
   server as WsServer,
 } from 'websocket';
-import wsConfig from 'wsConfig.json';
-import Host from 'app/inteliProtocol/clientEvent/Host';
-import ClientEvent from 'app/inteliProtocol/clientEvent/ClientEvent';
-import ActionEnum from 'app/inteliProtocol/EventActions';
-import EventEncode from 'app/inteliProtocol/EventEncode';
+import inteliConfig from 'inteliProxyConfig.json';
+import Host from 'app/inteliProtocol/webServerEvent/Host';
+import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
+import ActionEnum from 'app/inteliProtocol/enums/EventActions';
+import EventEncode from 'app/inteliProtocol/enums/EventEncode';
 import {
   inteliSHA256CheckAuthorizationHeader,
   inteliSHA256CheckValidity,
@@ -111,7 +111,7 @@ class ProxyServer {
       // Websocket server mounting
       this.wsServer.mount({
         httpServer: this.wsHttpServer,
-        ...wsConfig,
+        ...inteliConfig.wsServerMount,
       });
       // Websocket server start listening
       this.wsHttpServer.listen(process.env.PROXY_WS_PORT, () => {
@@ -200,6 +200,9 @@ class ProxyServer {
       this.hostsQueue.push(connection);
       return this.hostsIndexMap.get(connection);
     } else {
+      logger.warn(
+        `Inteli reverse-proxy server can't resolve web client request, no host registred`
+      );
       return null;
     }
   }
@@ -291,7 +294,7 @@ class ProxyServer {
     data: IMessage
   ) {
     if ((data.type = EventEncode.utf8)) {
-      const event: ClientEvent = JSON.parse(data.utf8Data);
+      const event: WebServerEvent = JSON.parse(data.utf8Data);
       if (
         inteliSHA256CheckValidity(
           event.authentification,

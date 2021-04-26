@@ -4,17 +4,18 @@ import {
   client as WsClient,
   IMessage,
 } from 'websocket';
-import ClientEvent from 'app/inteliProtocol/clientEvent/ClientEvent';
+import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
 import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
-import ActionEnum from 'app/inteliProtocol/EventActions';
+import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import http from 'http';
 import https from 'https';
-import EventEncode from 'app/inteliProtocol/EventEncode';
-import wsConfig from 'wsConfig.json';
+import EventEncode from 'app/inteliProtocol/enums/EventEncode';
+import inteliConfig from 'inteliProxyConfig.json';
 import InteliSHA256, {
   InteliSHA256Factory,
 } from 'app/inteliProtocol/Authentification/InteliSHA256';
 import fs from 'fs';
+import logger from 'app/tools/logger';
 // ==>
 
 enum ServerStates {
@@ -24,10 +25,10 @@ enum ServerStates {
 }
 
 /**
- * @class ProxyClient - This provide Inteli-reverse-proxy client class
+ * @class ProxyWebServer - This provide Inteli-reverse-proxy client class
  * @version 1.00
  */
-class ProxyClient {
+class ProxyWebServer {
   private state: ServerStates = ServerStates.CLOSE; // Server current state
 
   private wsClient: WsClient = new WsClient(); // Websocket client instance
@@ -43,11 +44,11 @@ class ProxyClient {
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy client (back-end http server)
-   * @param host - http server host to provide acces to the Inteli-reverse-proxy server
-   * @param port - http server port to provide acces to the Inteli-reverse-proxy server
-   * @param agentId - Client identifiant
-   * @param clientPrivateKeyFileName  - Client private key Cert file name
-   * @param httpServer - CLient http/https server
+   * @param host - Inteli reverse-proxy web server host
+   * @param port - Inteli reverse-proxy web server port
+   * @param agentId - Inteli reverse-proxy web server identifiant
+   * @param clientPrivateKeyFileName  - Inteli reverse-proxy web server cert private key file name
+   * @param httpServer - Inteli reverse-proxy web server (http/https)
    */
   constructor(
     host: string,
@@ -65,12 +66,20 @@ class ProxyClient {
           clientPrivateKeyFileName
         );
       } else {
+        logger.error(
+          `An error occured during instanciation of Inteli reverse-proxy Web server. RSA private key not found at ${process.cwd()}/${clientPrivateKeyFileName}.pem`
+        );
         throw new Error(
-          `client private key don't exist : ${process.cwd()}/${clientPrivateKeyFileName}.pem`
+          `ERROR - [${new Date()}] Web server RSA private key not found at ${process.cwd()}/${clientPrivateKeyFileName}.pem`
         );
       }
     } catch (err) {
-      console.error(err);
+      logger.error(
+        `An error occured during instanciation of Inteli reverse-proxy web server.
+          Error message : ${err.message}
+          Stack: ${err.stack}
+        `
+      );
       throw err;
     }
     this.httpServer = httpServer;
@@ -87,19 +96,25 @@ class ProxyClient {
    */
   public start() {
     if (this.state === ServerStates.CLOSE) {
+      logger.info(
+        `Inteli reverse-proxy web server start in progress (2 steps)...`
+      );
+
       this.state = ServerStates.PENDING;
+
       const headers: http.OutgoingHttpHeaders = {
         Authorization: `INTELI-SHA256 AgentId=${this.inteliSHA256.agentId}, Signature=${this.inteliSHA256.signature}`,
       };
+
       this.wsClient.connect(
         `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
         'inteli',
         'localhost',
         headers
-      );      
+      );
     } else {
-      console.warn(
-        `Starting client aborded because client already start or in pending situation`
+      logger.warn(
+        `Inteli reverse-proxy web server start attempt aborded: server is already start or in intermediate state`
       );
     }
   }
@@ -109,18 +124,43 @@ class ProxyClient {
    */
   public stop() {
     if (this.state === ServerStates.OPEN) {
-      this.state = ServerStates.PENDING;
-      this.connection.close();
-      setTimeout(() => {
-        if (this.httpServer.listening) {
-          this.httpServer.close((err?: Error) => {
-            this.httpServerCloseHandler(this, err);
-          });
-        }
-      }, wsConfig.closeTimeout);      
+      try {
+        logger.info(
+          `Inteli reverse-proxy web server stop in progress (2 steps) ...`
+        );
+
+        this.state = ServerStates.PENDING;
+
+        this.connection.close();
+        logger.info(
+          `Inteli reverse-proxy web server stop (1/2) : websocket client stop`
+        );
+        setTimeout(() => {
+          if (this.httpServer.listening) {
+            this.httpServer.close((err?: Error) => {
+              if (err) {
+                logger.error(
+                  `An error occured when Inteli reverse-proxy web server attempted to stop 
+                  Error message : ${err.message}
+                  Stack: ${err.stack}
+                `
+                );
+              } else {
+                this.httpServerCloseHandler(this, err);
+              }
+            });
+          }
+        }, inteliConfig.webserver.closeTimeout);
+      } catch (err) {
+        logger.error(
+          `An error occured when Inteli reverse-proxy web server attempted to stop 
+            Error message : ${err.message}
+            Stack: ${err.stack}`
+        );
+      }
     } else {
-      console.warn(
-        `Stopping client aborded because client already stop or in pending situation`
+      logger.warn(
+        `Inteli reverse-proxy web server stop attempt aborded: server is already stop or in intermediate state`
       );
     }
   }
@@ -130,10 +170,13 @@ class ProxyClient {
    * @param _this Class instance context
    * @param err Error send by server when client attempt to connect
    */
-  private wsClientConnectFailedHandler(_this: ProxyClient, err: Error) {
-    console.error(err);
+  private wsClientConnectFailedHandler(_this: ProxyWebServer, err: Error) {
+    logger.error(
+      `Inteli reverse-proxy websocket client event - An error occured when attempted websocket connection
+        Error message : ${err.message}
+        Stack: ${err.stack}`
+    );
     this.state = ServerStates.CLOSE;
-    throw err;
   }
 
   /**
@@ -141,7 +184,10 @@ class ProxyClient {
    * @param _this Class instance context
    * @param connection WS Client connection object
    */
-  private wsClientConnectHandler(_this: ProxyClient, connection: Connection) {
+  private wsClientConnectHandler(
+    _this: ProxyWebServer,
+    connection: Connection
+  ) {
     _this.connection = connection;
     connection.on('error', (err: Error) => {
       _this.wsClientErrorHandler(_this, err);
@@ -153,7 +199,9 @@ class ProxyClient {
       _this.wsClientMessageHandler(_this, data);
     });
 
-    console.log('Client connection to Inteli-reverse-proxy server success');
+    logger.info(
+      `Inteli reverse-proxy web server start (1/2) : websocket client start`
+    );
     _this.httpServer.listen(_this.port, () => {
       _this.httpServerListenHandler(_this);
     });
@@ -165,9 +213,17 @@ class ProxyClient {
    * @param code Close reason code send by server
    * @param desc Close description reason send by server
    */
-  private wsClientCloseHandler(_this: ProxyClient, code: number, desc: string) {
-    console.log(`WebSocket client disconnected, reason : ${code} - ${desc}`);
-    _this.stop();
+  private wsClientCloseHandler(
+    _this: ProxyWebServer,
+    code: number,
+    desc: string
+  ) {
+    logger.info(
+      `Inteli reverse-proxy webSocket client disconnected, reason : ${code} - ${desc}`
+    );
+    if (_this.state === ServerStates.OPEN) {
+      _this.stop();
+    }
   }
 
   /**
@@ -175,12 +231,16 @@ class ProxyClient {
    * @param _this Class instance context
    * @param data Message data content
    */
-  private wsClientMessageHandler(_this: ProxyClient, data: IMessage) {
+  private wsClientMessageHandler(_this: ProxyWebServer, data: IMessage) {
     if (data.type === EventEncode.utf8) {
-      console.log(`Receive message from server : ${data.utf8Data}`);
+      logger.warn(
+        `Inteli reverse-proxy webSocket client receive utf8 message : <${data.utf8Data}>`
+      );
     }
     if (data.type === EventEncode.binary) {
-      console.log(`Receive message from server : ${data.binaryData}`);
+      logger.warn(
+        `Inteli reverse-proxy webSocket client receive binary message : <${data.utf8Data}>`
+      );
     }
   }
 
@@ -189,25 +249,32 @@ class ProxyClient {
    * @param _this Class instance context
    * @param err Error send by server
    */
-  private wsClientErrorHandler(_this: ProxyClient, err: Error) {
-    console.error(err);
-    _this.stop();
-    throw err;
+  private wsClientErrorHandler(_this: ProxyWebServer, err: Error) {
+    logger.error(
+      `Inteli reverse-proxy websocket client event - An error occured when attempted to stop web server
+        Error message : ${err.message}
+        Stack: ${err.stack}`
+    );
+    if (_this.state === ServerStates.OPEN) {
+      _this.stop();
+    }
   }
 
   /**
    * @method ProxyClient#httpServerListenHandler That will occured if http server start listening
    * @param _this Class instance context
    */
-  private httpServerListenHandler(_this: ProxyClient) {
-    console.log(`HTTP server is listening on port [${_this.port}]`);
-    const openProxyEvent: ClientEvent = InteliEventFactory.makeProxyEvent(
+  private httpServerListenHandler(_this: ProxyWebServer) {
+    logger.info(
+      `Inteli reverse-proxy web server start (2/2) : web server start on port [${_this.port}]`
+    );
+    const openProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
       ActionEnum.open,
       _this.inteliSHA256,
+      inteliConfig.webserver.version,
       _this.host,
       _this.port
     );
-    console.log(`Send <open> instruction to Inteli-reverse-proxy`);
     _this.connection.send(JSON.stringify(openProxyEvent));
     this.state = ServerStates.OPEN;
   }
@@ -217,14 +284,20 @@ class ProxyClient {
    * @param _this Class instance context
    * @param err Error if error occured
    */
-  private httpServerCloseHandler(_this: ProxyClient, err?: Error) {
+  private httpServerCloseHandler(_this: ProxyWebServer, err?: Error) {
     if (err) {
-      console.error(err);
+      logger.error(
+        `Inteli reverse-proxy websocket client event - An error occured when attempted to stop web server
+          Error message : ${err.message}
+          Stack: ${err.stack}`
+      );
     } else {
-      console.log(`HTTP server close.`);
+      logger.info(
+        `Inteli reverse-proxy web server stop (2/2) : web server stop on port [${_this.port}]`
+      );
       this.state = ServerStates.CLOSE;
     }
   }
 }
 
-export default ProxyClient;
+export default ProxyWebServer;

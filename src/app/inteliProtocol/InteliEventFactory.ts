@@ -1,19 +1,20 @@
-import ClientEvent from 'app/inteliProtocol/clientEvent/ClientEvent';
-import ActionEnum from 'app/inteliProtocol/EventActions';
-import TypeEnum from 'app/inteliProtocol/EventTypes';
+import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
+import ActionEnum from 'app/inteliProtocol/enums/EventActions';
+import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
 import InteliSHA256 from './Authentification/InteliSHA256';
 
 class EventFactory {
-  static makeProxyEvent(
+  static makeWebServerEvent(
     action: ActionEnum.open | ActionEnum.close,
     inteliSHA256: InteliSHA256,
+    version: string,
     host: string,
     port: number
-  ): Readonly<ClientEvent> {
+  ): Readonly<WebServerEvent> {
     return {
-      header: { type: TypeEnum.proxy, action },
+      header: { type: TypeEnum.webServer, action },
       authentification: inteliSHA256,
-      payload: { hostId: inteliSHA256.agentId, host, port },
+      payload: { hostId: inteliSHA256.agentId, version, host, port },
     };
   }
 }
