@@ -13,7 +13,7 @@ class EventFactory {
     return {
       header: { type: TypeEnum.proxy, action },
       authentification: inteliSHA256,
-      payload: { host, port },
+      payload: { hostId: inteliSHA256.agentId, host, port },
     };
   }
 }

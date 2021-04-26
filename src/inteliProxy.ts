@@ -1,3 +1,5 @@
+import logger from 'app/tools/logger';
+
 /**
  * @module Inteli-reverse-proxy
  * @description This module provide a reverse proxy (load balancer) server and proxy client HTTP server
@@ -9,6 +11,9 @@
 import dotenv from 'dotenv';
 const result = dotenv.config();
 if (result.error) {
+  logger.error(
+    `Error append during environnement parameters loading, ${result.error.message}`
+  );
   throw result.error;
 }
 

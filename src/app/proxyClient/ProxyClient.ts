@@ -10,7 +10,7 @@ import ActionEnum from 'app/inteliProtocol/EventActions';
 import http from 'http';
 import https from 'https';
 import EventEncode from 'app/inteliProtocol/EventEncode';
-import wsConfig from 'app/proxyServer/wsConfig.json';
+import wsConfig from 'wsConfig.json';
 import InteliSHA256, {
   InteliSHA256Factory,
 } from 'app/inteliProtocol/Authentification/InteliSHA256';
