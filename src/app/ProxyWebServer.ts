@@ -14,7 +14,6 @@ import inteliConfig from 'inteliProxyConfig.json';
 import InteliAgentSHA256, {
   InteliSHA256Factory,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import fs from 'fs';
 import logger from 'app/tools/logger';
 // ==>
 
@@ -25,7 +24,7 @@ enum ServerStates {
 }
 
 /**
- * @class ProxyWebServer - This provide Inteli-reverse-proxy client class
+ * @class ProxyWebServer - This provide Inteli-reverse-proxy web server class
  * @version 1.00
  */
 class ProxyWebServer {
@@ -42,7 +41,7 @@ class ProxyWebServer {
   private connection: Connection = null; // Websocket client connection instance
 
   /**
-   * @constructor This provide instance Inteli-reverse-proxy client (back-end http server)
+   * @constructor This provide instance Inteli-reverse-proxy web server (back-end web http server)
    * @param host - Inteli reverse-proxy web server host
    * @param port - Inteli reverse-proxy web server port
    * @param agentId - Inteli reverse-proxy web server identifiant
@@ -79,20 +78,17 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#Start Start Inteli-reverse-proxy client
+   * @method ProxyWebServer#Start Start Inteli-reverse-proxy client
    */
   public start() {
     if (this.state === ServerStates.CLOSE) {
+      this.state = ServerStates.PENDING;
       logger.info(
         `Inteli reverse-proxy web server start in progress (2 steps)...`
       );
-
-      this.state = ServerStates.PENDING;
-
       const headers: http.OutgoingHttpHeaders = {
         Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
       };
-
       this.wsClient.connect(
         `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
         'inteli',
@@ -107,17 +103,15 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#Stop Stop Inteli-reverse-proxy client
+   * @method ProxyWebServer#Stop Stop Inteli-reverse-proxy client
    */
   public stop() {
     if (this.state === ServerStates.OPEN) {
+      this.state = ServerStates.PENDING;
+      logger.info(
+        `Inteli reverse-proxy web server stop in progress (2 steps) ...`
+      );
       try {
-        logger.info(
-          `Inteli reverse-proxy web server stop in progress (2 steps) ...`
-        );
-
-        this.state = ServerStates.PENDING;
-
         this.connection.close();
         logger.info(
           `Inteli reverse-proxy web server stop (1/2) : websocket client stop`
@@ -153,7 +147,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#wsClientConnectFailedHandler Deal with error from the connection attempt
+   * @method ProxyWebServer#wsClientConnectFailedHandler Deal with error from the connection attempt
    * @param _this Class instance context
    * @param err Error send by server when client attempt to connect
    */
@@ -167,7 +161,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#wsClientConnectHandler That will occured if connection succeeds
+   * @method ProxyWebServer#wsClientConnectHandler That will occured if connection succeeds
    * @param _this Class instance context
    * @param connection WS Client connection object
    */
@@ -195,7 +189,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#wsClientCloseHandler That will occured if connection close by server
+   * @method ProxyWebServer#wsClientCloseHandler That will occured if connection close by server
    * @param _this Class instance context
    * @param code Close reason code send by server
    * @param desc Close description reason send by server
@@ -214,7 +208,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#wsClientMessageHandler That will occured if message send by server
+   * @method ProxyWebServer#wsClientMessageHandler That will occured if message send by server
    * @param _this Class instance context
    * @param data Message data content
    */
@@ -232,7 +226,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#wsClientErrorHandler That will occured if an error send by server
+   * @method ProxyWebServer#wsClientErrorHandler That will occured if an error send by server
    * @param _this Class instance context
    * @param err Error send by server
    */
@@ -248,7 +242,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#httpServerListenHandler That will occured if http server start listening
+   * @method ProxyWebServer#httpServerListenHandler That will occured if http server start listening
    * @param _this Class instance context
    */
   private httpServerListenHandler(_this: ProxyWebServer) {
@@ -267,7 +261,7 @@ class ProxyWebServer {
   }
 
   /**
-   * @method ProxyClient#httpServerListenHandler That will occured if http server close
+   * @method ProxyWebServer#httpServerListenHandler That will occured if http server close
    * @param _this Class instance context
    * @param err Error if error occured
    */

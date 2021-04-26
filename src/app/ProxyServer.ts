@@ -93,9 +93,9 @@ class ProxyServer {
    */
   public start() {
     if (this.state === ServerStates.CLOSE) {
+      this.state = ServerStates.PENDING;
       logger.info(`Inteli reverse-proxy start in progress (2 steps)...`);
 
-      this.state = ServerStates.PENDING;
       this.hostsIndexMap = new WeakMap();
       this.hostsQueue = new Array(0);
       // Websocket server mounting
@@ -128,9 +128,8 @@ class ProxyServer {
    */
   public stop() {
     if (this.state === ServerStates.OPEN) {
-      logger.info(`Inteli reverse-proxy server stop in progress (2 steps) ...`);
-
       this.state = ServerStates.PENDING;
+      logger.info(`Inteli reverse-proxy server stop in progress (2 steps) ...`);
 
       // Http proxy server try stop listening
       if (this.proxyHttpServer.listening) {
