@@ -18,9 +18,9 @@ if (result.error) {
 }
 
 // Provide Inteli proxy server Class
-import ProxyServer from './app/proxyServer/ProxyServer';
+import ProxyServer from './app/ProxyServer';
 
 // Provide Inteli proxy client server Class
-import ProxyWebServer from './app/proxyWebServer/ProxyWebServer';
+import ProxyWebServer from './app/ProxyWebServer';
 
 export default { ProxyServer, ProxyWebServer };
