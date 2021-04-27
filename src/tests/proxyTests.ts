@@ -17,7 +17,7 @@ const proxyServer = new inteliProxy.ProxyServer(checkOrigin);
 proxyServer.start();
 setTimeout(() => {
   proxyServer.stop();
-}, 30000);
+}, 60000);
 
 const proxyClient = new inteliProxy.ProxyWebServer(
   'localhost',
@@ -32,5 +32,5 @@ setTimeout(() => {
   proxyClient.start();
   setTimeout(() => {
     proxyClient.stop();
-  }, 10000);
+  }, 40000);
 }, 2000);
