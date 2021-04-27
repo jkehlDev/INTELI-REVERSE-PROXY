@@ -35,7 +35,7 @@ class ProxyWebServer {
 
   // Authentification agentId & signature
   private inteliAgentSHA256: InteliAgentSHA256;
-  
+
   private host: string; // Http/Https server host domain
   private port: number; // Http/Https server port
   private connection: Connection = null; // Websocket client connection instance
@@ -92,7 +92,7 @@ class ProxyWebServer {
       this.wsClient.connect(
         `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
         'inteli',
-        'localhost',
+        this.host,
         headers
       );
     } else {

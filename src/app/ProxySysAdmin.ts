@@ -10,6 +10,11 @@ import {
   connection as Connection,
   IMessage,
 } from 'websocket';
+import fs from 'fs';
+import ActionEnum from 'app/inteliProtocol/enums/EventActions';
+import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
+import SysAdminEvent from 'app/inteliProtocol/sysAdminEvent/SysAdminEvent';
+import TargetCert from 'app/inteliProtocol/sysAdminEvent/TargetCert';
 // ==>
 
 enum ServerStates {
@@ -194,6 +199,31 @@ class ProxySysAdmin {
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
+    }
+  }
+
+  public send(
+    action: ActionEnum.add | ActionEnum.remove,
+    hostId: string,
+    publicKeyFilePath: string
+  ) {
+    if (this.state === ServerStates.OPEN) {
+      const publicKey: string = fs.readFileSync(publicKeyFilePath, 'utf8');
+      const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
+        action,
+        this.inteliAgentSHA256,
+        hostId,
+        publicKey
+      );
+      const sendPayload: string = JSON.stringify(sysAdminEvent);
+      logger.info(
+        `Sending event to Inteli reverse-proxy server : ${sendPayload}`
+      );
+      this.connection.send(sendPayload);
+    } else {
+      logger.warn(
+        `Can't send event to Inteli reverse-proxy server, sysadmin client not connected or in pendding state`
+      );
     }
   }
 }

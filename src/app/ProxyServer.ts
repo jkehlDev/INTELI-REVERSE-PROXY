@@ -2,7 +2,6 @@
 import http from 'http';
 import https from 'https';
 import httpProxy from 'http-proxy';
-import fs from 'fs';
 import {
   connection as Connection,
   IMessage,
@@ -203,7 +202,7 @@ class ProxyServer {
    */
   private async wsServerRequestHandler(_this: ProxyServer, request: Request) {
     logger.info(
-      `New websocket client try to connect to Inteli reverse-proxy websocket server from ${request.origin}`
+      `New websocket client try to connect to Inteli reverse-proxy websocket server from : ${request.origin}`
     );
     if (
       !(await _this.checkOrigin(request.origin)) ||
@@ -243,7 +242,8 @@ class ProxyServer {
    * @param _this Class instance context
    * @param connection WS client connection object
    */
-  private wsServerConnectHandler(_this: ProxyServer, connection: Connection) {}
+  private wsServerConnectHandler(_this: ProxyServer, connection: Connection) {
+  }
 
   /**
    * @method ProxyServer#wsServerCloseHandler WS server close event handler
