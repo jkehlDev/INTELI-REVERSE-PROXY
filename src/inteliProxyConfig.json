@@ -8,7 +8,7 @@
     "autoAcceptConnections": false,
     "closeTimeout": 5000,
     "disableNagleAlgorithm": true,
-    "ignoreXForwardedFor": false
+    "ignoreXForwardedFor": true
   },
   "webserver": {
     "version": "1.0.0",
