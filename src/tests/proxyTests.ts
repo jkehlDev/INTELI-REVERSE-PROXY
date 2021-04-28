@@ -15,26 +15,44 @@ function runTest() {
     return true;
   };
   const proxyServer = new inteliProxy.ProxyServer(checkOrigin);
-  proxyServer.start();
-  setTimeout(() => {
-    proxyServer.stop();
-  }, 10000);
-
-  const proxyClient = new inteliProxy.ProxyWebServer(
-    'localhost',
-    4242,
-    'WEB001',
-    http.createServer((req, res) => {
-      res.setHeader('content-type', 'text/plain');
-      res.end('hello, world!');
-    })
-  );
-  setTimeout(() => {
-    proxyClient.start();
-    setTimeout(() => {
-      proxyClient.stop();
-    }, 4000);
-  }, 2000);
+  proxyServer.start().then((result) => {
+    if (result) {
+      try {
+        const proxyClient = new inteliProxy.ProxyWebServer(
+          'localhost',
+          4242,
+          'WEB001',
+          http.createServer((req, res) => {
+            res.setHeader('content-type', 'text/plain');
+            res.end('hello, world!');
+          })
+        );
+        setTimeout(() => {
+          proxyClient
+            .start()
+            .then((result) => {
+              if (result) {
+                setTimeout(() => {
+                  proxyClient.stop().catch((err) => {
+                    logger.error(err);
+                  });
+                }, 4000);
+              }
+            })
+            .catch((err) => {
+              logger.error(err);
+            });
+        }, 2000);
+      } catch (err) {
+        logger.error(err);
+      }
+      setTimeout(() => {
+        proxyServer.stop().catch((err) => {
+          logger.error(err);
+        });
+      }, 10000);
+    }
+  });
 }
 
 try {

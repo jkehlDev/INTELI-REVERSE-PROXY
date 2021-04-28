@@ -82,8 +82,7 @@ class ProxyServer {
       logger.error(
         `An error occured during instanciation of Inteli reverse-proxy server.
           Error message : ${err.message}
-          Stack: ${err.stack}
-        `
+          Stack: ${err.stack}`
       );
       throw err;
     }
@@ -92,88 +91,120 @@ class ProxyServer {
   /**
    * @method ProxyServer#start Start Inteli Proxy server
    */
-  public start() {
-    if (this.state === ServerStates.CLOSE) {
-      this.state = ServerStates.PENDING;
-      logger.info(`Inteli reverse-proxy start in progress (2 steps)...`);
+  public start(): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      try {
+        if (this.state === ServerStates.CLOSE) {
+          this.state = ServerStates.PENDING;
+          logger.info(`Inteli reverse-proxy start in progress (2 steps)...`);
 
-      this.hostsIndexMap = new WeakMap();
-      this.hostsQueue = new Array(0);
-      // Websocket server mounting
-      this.wsServer.mount({
-        httpServer: this.wsHttpServer,
-        ...inteliConfig.wsServerMount,
-      });
-      // Websocket server start listening
-      this.wsHttpServer.listen(process.env.PROXY_WS_PORT, () => {
-        logger.info(
-          `Inteli reverse-proxy server start (1/2) : websocket server start on port [${process.env.PROXY_WS_PORT}]`
+          this.hostsIndexMap = new WeakMap();
+          this.hostsQueue = new Array(0);
+
+          // Websocket server mounting
+          this.wsServer.mount({
+            httpServer: this.wsHttpServer,
+            ...inteliConfig.wsServerMount,
+          });
+
+          // Websocket server start listening
+          this.wsHttpServer.listen(process.env.PROXY_WS_PORT, () => {
+            logger.info(
+              `Inteli reverse-proxy server start (1/2) : websocket server start on port [${process.env.PROXY_WS_PORT}]`
+            );
+          });
+
+          // Http proxy server start listening
+          this.proxyHttpServer.listen(process.env.PROXY_PORT, () => {
+            logger.info(
+              `Inteli reverse-proxy server start (2/2) : reverse-proxy server start on port [${process.env.PROXY_PORT}]`
+            );
+            this.state = ServerStates.OPEN;
+            resolve(true);
+          });
+        } else {
+          logger.warn(
+            `Inteli reverse-proxy server start attempt aborded: server is already start or in intermediate state`
+          );
+          resolve(false);
+        }
+      } catch (err) {
+        logger.error(
+          `An error occured when Inteli reverse-proxy server attempt to start.
+            Error message : ${err.message}
+            Stack: ${err.stack}`
         );
-      });
-      // Http proxy server start listening
-      this.proxyHttpServer.listen(process.env.PROXY_PORT, () => {
-        logger.info(
-          `Inteli reverse-proxy server start (2/2) : reverse-proxy server start on port [${process.env.PROXY_PORT}]`
-        );
-        this.state = ServerStates.OPEN;
-      });
-    } else {
-      logger.warn(
-        `Inteli reverse-proxy server start attempt aborded: server is already start or in intermediate state`
-      );
-    }
+        reject(err);
+      }
+    });
   }
 
   /**
    * @method ProxyServer#stop Stop Inteli Proxy server
    */
-  public stop() {
-    if (this.state === ServerStates.OPEN) {
-      this.state = ServerStates.PENDING;
-      logger.info(`Inteli reverse-proxy server stop in progress (2 steps) ...`);
+  public stop(): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      try {
+        if (this.state === ServerStates.OPEN) {
+          this.state = ServerStates.PENDING;
+          logger.info(
+            `Inteli reverse-proxy server stop in progress (2 steps) ...`
+          );
 
-      // Http proxy server try stop listening
-      if (this.proxyHttpServer.listening) {
-        this.proxyHttpServer.close((err: Error) => {
-          if (err) {
-            logger.error(
-              `An error occured when Inteli reverse-proxy server attempted to stop 
-                Error message : ${err.message}
-                Stack: ${err.stack}
-              `
-            );
-          } else {
-            logger.info(
-              `Inteli reverse-proxy server stop (1/2) : websocket server stop on port [${process.env.PROXY_WS_PORT}]`
-            );
+          // Http proxy server try stop listening
+          if (this.proxyHttpServer.listening) {
+            this.proxyHttpServer.close((err: Error) => {
+              if (err) {
+                logger.error(
+                  `An error occured when Inteli reverse-proxy server attempted to stop 
+                  Error message : ${err.message}
+                  Stack: ${err.stack}`
+                );
+                reject(err);
+              } else {
+                logger.info(
+                  `Inteli reverse-proxy server stop (1/2) : websocket server stop on port [${process.env.PROXY_WS_PORT}]`
+                );
+              }
+            });
           }
-        });
-      }
 
-      // Shutdown websocket server
-      this.wsServer.shutDown();
-      if (this.wsHttpServer.listening) {
-        this.wsHttpServer.close((err: Error) => {
-          if (err) {
-            logger.error(
-              `An error occured when Inteli reverse-proxy websocket server attempted to stop 
-                Error message : ${err.message}
-                Stack: ${err.stack}
-              `
-            );
-          } else {
-            logger.info(
-              `Inteli reverse-proxy server stop (2/2) : reverse-proxy server stop on port [${process.env.PROXY_PORT}]`
-            );
-            this.state = ServerStates.CLOSE;
+          // Shutdown websocket server
+          this.wsServer.shutDown();
+          if (this.wsHttpServer.listening) {
+            this.wsHttpServer.close((err: Error) => {
+              if (err) {
+                logger.error(
+                  `An error occured when Inteli reverse-proxy websocket server attempted to stop 
+                  Error message : ${err.message}
+                  Stack: ${err.stack}
+                `
+                );
+                reject(err);
+              } else {
+                logger.info(
+                  `Inteli reverse-proxy server stop (2/2) : reverse-proxy server stop on port [${process.env.PROXY_PORT}]`
+                );
+                this.state = ServerStates.CLOSE;
+                resolve(true);
+              }
+            });
           }
-        });
+        } else {
+          logger.warn(
+            `Inteli reverse-proxy server stop attempt aborded: server is already stop or in intermediate state`
+          );
+          resolve(false);
+        }
+      } catch (err) {
+        logger.error(
+          `An error occured when Inteli reverse-proxy server attempt to stop.
+            Error message : ${err.message}
+            Stack: ${err.stack}`
+        );
+        reject(err);
       }
-    } else {
-      logger.warn(
-        `Inteli reverse-proxy server stop attempt aborded: server is already stop or in intermediate state`
-      );
-    }
+    });
   }
 
   /**
