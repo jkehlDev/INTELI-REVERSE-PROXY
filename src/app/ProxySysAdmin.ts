@@ -13,11 +13,11 @@ import fs from 'fs';
 import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
 import SysAdminEvent from 'app/inteliProtocol/sysAdminEvent/SysAdminEvent';
+import inteliConfig from 'inteliProxyConfig.json';
 import getLogger from 'app/tools/logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySysAdmin');
-
 
 enum ServerStates {
   CLOSE,
@@ -33,14 +33,17 @@ class ProxySysAdmin {
   private state: ServerStates = ServerStates.CLOSE; // Sysadmin websocket current state
   private wsClient: WsClient = new WsClient(); // Websocket client instance
 
+  private origin: string; // Websocket client origin
+
   // Authentification agentId & signature
   private inteliAgentSHA256: InteliAgentSHA256;
   private connection: Connection = null; // Websocket client connection instance
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy SysAdmin client
+   * @param origin Websocket client origin for server CORS check validity
    */
-  constructor() {
+  constructor(origin: string) {
     try {
       this.inteliAgentSHA256 = InteliSHA256Factory.makeInteliAgentSHA256(
         'sysadmin'
@@ -99,8 +102,8 @@ class ProxySysAdmin {
 
         this.wsClient.connect(
           `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-          'inteli',
-          'localhost',
+          inteliConfig.wsprotocol,
+          this.origin,
           headers
         );
       } else {
@@ -202,28 +205,35 @@ class ProxySysAdmin {
   public send(
     action: ActionEnum.add | ActionEnum.remove,
     hostId: string,
-    publicKeyFilePath?: string
+    publicKeyFilePath: string = undefined
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      if (this.state === ServerStates.OPEN) {
-        const publicKey: string = fs.readFileSync(publicKeyFilePath, 'utf8');
-        const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
-          action,
-          this.inteliAgentSHA256,
-          hostId,
-          publicKey
-        );
-        const sendPayload: string = JSON.stringify(sysAdminEvent);
-        logger.info(
-          `Sending event to Inteli reverse-proxy server : ${sendPayload}`
-        );
-        this.connection.send(sendPayload);
-        resolve();
-      } else {
-        logger.warn(
-          `Can't send event to Inteli reverse-proxy server, sysadmin client not connected or in pendding state`
-        );
-        reject('ERROR_CLIENT_STATE');
+      try {
+        if (this.state === ServerStates.OPEN) {
+          let publicKey: string = '';
+          if (publicKeyFilePath && fs.existsSync(publicKeyFilePath)) {
+            publicKey = fs.readFileSync(publicKeyFilePath, 'utf8');
+          }
+          const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
+            action,
+            this.inteliAgentSHA256,
+            hostId,
+            publicKey
+          );
+          const sendPayload: string = JSON.stringify(sysAdminEvent);
+          logger.info(
+            `Sending event to Inteli reverse-proxy server : ${sendPayload}`
+          );
+          this.connection.send(sendPayload);
+          resolve();
+        } else {
+          logger.warn(
+            `Can't send event to Inteli reverse-proxy server, sysadmin client not connected or in pendding state`
+          );
+          reject('ERROR_CLIENT_STATE');
+        }
+      } catch (err) {
+        logger.error(err);
       }
     });
   }

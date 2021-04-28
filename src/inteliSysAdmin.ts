@@ -6,7 +6,7 @@ import getLogger from 'app/tools/logger';
 const logger = getLogger('InteliSysAdmin');
 
 import Yargs from 'yargs';
-const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin();
+
 Yargs(process.argv.slice(2))
   .usage('Usage: $0 <command> [options]')
   .command(
@@ -27,13 +27,20 @@ Yargs(process.argv.slice(2))
           nargs: 1,
           required: true,
           description: 'RSA public key file',
+        })
+        .option('origin', {
+          alias: 'o',
+          type: 'string',
+          nargs: 1,
+          required: true,
+          description: 'Websocket client origin for server CORS check validity',
         });
     },
-    ({ id, file }) => {
+    ({ id, file, origin }) => {
+      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(origin);
       proxySysAdmin
         .start()
         .then(() => {
-          console.log('plop');
           proxySysAdmin.send(ActionEnum.add, id, file);
         })
         .catch((err) => {
@@ -48,26 +55,34 @@ Yargs(process.argv.slice(2))
     }
   )
   .example(
-    '$0 add -i web001 -f web001_publicKey.pem',
+    '$0 add -i web001 -f web001_publicKey.pem -o localhost',
     'Add web001 web server to proxy target host RSA public key store.'
   )
   .command(
     'remove',
     'Remove a web server to proxy target host RSA public key store.',
     (yargs) => {
-      return yargs.option('id', {
-        alias: 'i',
-        nargs: 1,
-        type: 'string',
-        required: true,
-        description: 'Web server id',
-      });
+      return yargs
+        .option('id', {
+          alias: 'i',
+          nargs: 1,
+          type: 'string',
+          required: true,
+          description: 'Web server id',
+        })
+        .option('origin', {
+          alias: 'o',
+          type: 'string',
+          nargs: 1,
+          required: true,
+          description: 'Websocket client origin for server CORS check validity',
+        });
     },
-    ({ id }) => {
+    ({ id, origin }) => {
+      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(origin);
       proxySysAdmin
         .start()
         .then(() => {
-          console.log('plop');
           proxySysAdmin.send(ActionEnum.remove, id);
         })
         .catch((err) => {
@@ -82,7 +97,7 @@ Yargs(process.argv.slice(2))
     }
   )
   .example(
-    '$0 remove -i web001',
+    '$0 remove -i web001 -o localhost',
     'Remove web001 web server to proxy target host RSA public key store.'
   )
   .version()

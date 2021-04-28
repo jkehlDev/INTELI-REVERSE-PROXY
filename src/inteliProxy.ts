@@ -19,10 +19,13 @@ if (result.error) {
   throw result.error;
 }
 
-// Provide Inteli proxy server Class
+// Provide ProxyServer Class
 import ProxyServer from './app/ProxyServer';
 
-// Provide Inteli proxy client server Class
+// Provide ProxyWebServer Class
 import ProxyWebServer from './app/ProxyWebServer';
 
-export default { ProxyServer, ProxyWebServer };
+// Provide ProxySysAdmin Class
+import ProxySysAdmin from './app/ProxySysAdmin';
+
+export default { ProxyServer, ProxyWebServer, ProxySysAdmin };
