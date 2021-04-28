@@ -224,8 +224,13 @@ class ProxySysAdmin {
           logger.info(
             `Sending event to Inteli reverse-proxy server : ${sendPayload}`
           );
-          this.connection.send(sendPayload);
-          resolve();
+          this.connection.send(sendPayload, (err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
         } else {
           logger.warn(
             `Can't send event to Inteli reverse-proxy server, sysadmin client not connected or in pendding state`

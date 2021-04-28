@@ -144,9 +144,14 @@ class ProxyWebServer {
                 this.port,
                 this.rule
               );
-              this.connection.send(JSON.stringify(openProxyEvent));
-              this.state = ServerStates.OPEN;
-              resolve(true);
+              this.connection.send(JSON.stringify(openProxyEvent), (err) => {
+                if (err) {
+                  reject(err);
+                } else {
+                  this.state = ServerStates.OPEN;
+                  resolve(true);
+                }
+              });
             });
           });
 
