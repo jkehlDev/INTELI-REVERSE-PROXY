@@ -57,6 +57,7 @@ class ProxyWebServer {
 
   private host: string; // Http/Https server host domain
   private port: number; // Http/Https server port
+  private rule: string; // Inteli reverse-proxy web server path rule (for proxy router match rules)
   private connection: Connection = null; // Websocket client connection instance
 
   private messageHandler: (data: IMessage) => void; // Websocket client message handler
@@ -66,6 +67,7 @@ class ProxyWebServer {
    * @param host - Inteli reverse-proxy web server host
    * @param port - Inteli reverse-proxy web server port
    * @param agentId - Inteli reverse-proxy web server identifiant
+   * @param rule - Inteli reverse-proxy web server path rule (for proxy router match rules)
    * @param httpServer - Inteli reverse-proxy web server (http/https)
    * @param messageHandler - Websocket client message handler (optional)
    */
@@ -73,11 +75,13 @@ class ProxyWebServer {
     host: string,
     port: number,
     agentId: string,
+    rule: string,
     httpServer: http.Server | https.Server,
     messageHandler: (data: IMessage) => void = wsClientMessageHandler
   ) {
     this.host = host;
     this.port = port;
+    this.rule = rule;
     try {
       this.inteliAgentSHA256 = InteliSHA256Factory.makeInteliAgentSHA256(
         agentId
@@ -137,7 +141,8 @@ class ProxyWebServer {
                 this.inteliAgentSHA256,
                 inteliConfig.webserver.version,
                 this.host,
-                this.port
+                this.port,
+                this.rule
               );
               this.connection.send(JSON.stringify(openProxyEvent));
               this.state = ServerStates.OPEN;

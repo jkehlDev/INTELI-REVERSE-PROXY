@@ -17,13 +17,24 @@ function runTest() {
   };
   const proxyServer = new inteliProxy.ProxyServer(checkOrigin); // NEW PROXY SERVER
   const proxySysAdmin = new inteliProxy.ProxySysAdmin('localhost'); // NEW PROXY SysAdmin
-  const webServer = new inteliProxy.ProxyWebServer( // NEW WEB SERVER
+  const web001 = new inteliProxy.ProxyWebServer( // NEW WEB SERVER 001
     'localhost',
     4242,
     'WEB001',
+    '/test',
     http.createServer((req, res) => {
       res.setHeader('content-type', 'text/plain');
-      res.end('hello, world!');
+      res.write('hello, world 1 !');
+    })
+  );
+  const web002 = new inteliProxy.ProxyWebServer( // NEW WEB SERVER 002
+    'localhost',
+    4243,
+    'WEB002',
+    '/',
+    http.createServer((req, res) => {
+      res.setHeader('content-type', 'text/plain');
+      res.write('hello, world 2 !');
     })
   );
   proxyServer.start().then((result) => {
@@ -31,9 +42,12 @@ function runTest() {
     if (result) {
       proxySysAdmin // ADD CERT PUBLIC KEY TO CERT STORE
         .start()
-        .then(() => {
-          proxySysAdmin.send(ActionEnum.add, 'WEB001', 'WEB001_publicKey.pem');
-        })
+        .then(() =>
+          proxySysAdmin.send(ActionEnum.add, 'WEB001', 'WEB001_publicKey.pem')
+        )
+        .then(() =>
+          proxySysAdmin.send(ActionEnum.add, 'WEB002', 'WEB002_publicKey.pem')
+        )
         .catch((err) => {
           logger.error(`Cannot send adding request to proxy server`);
         })
@@ -43,12 +57,12 @@ function runTest() {
           });
         });
       setTimeout(() => {
-        webServer // START WEB SERVER
+        web001 // START WEB SERVER
           .start()
           .then((result) => {
             if (result) {
               setTimeout(() => {
-                webServer // STOP WEB SERVER
+                web001 // STOP WEB SERVER
                   .stop()
                   .catch((err) => {
                     logger.error(err);
@@ -76,7 +90,43 @@ function runTest() {
           .catch((err) => {
             logger.error(err);
           });
-      }, 5000);
+      }, 2500);
+
+      setTimeout(() => {
+        web002 // START WEB SERVER
+          .start()
+          .then((result) => {
+            if (result) {
+              setTimeout(() => {
+                web002 // STOP WEB SERVER
+                  .stop()
+                  .catch((err) => {
+                    logger.error(err);
+                  })
+                  .finally(() => {
+                    proxySysAdmin // REMOVE CERT PUBLIC KEY FROM CERT STORE
+                      .start()
+                      .then(() => {
+                        proxySysAdmin.send(ActionEnum.remove, 'WEB002');
+                      })
+                      .catch((err) => {
+                        logger.error(
+                          `Cannot send remove request to proxy server`
+                        );
+                      })
+                      .finally(() => {
+                        proxySysAdmin.stop().catch((err) => {
+                          logger.error(err);
+                        });
+                      });
+                  });
+              }, 5000);
+            }
+          })
+          .catch((err) => {
+            logger.error(err);
+          });
+      }, 7000);
 
       setTimeout(() => {
         proxyServer.stop().catch((err) => {

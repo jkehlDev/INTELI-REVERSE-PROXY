@@ -19,10 +19,10 @@ import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import EventEncode from 'app/inteliProtocol/enums/EventEncode';
 import InteliAgentSHA256, {
   getInteliSHA256FrmAuthorizationHeader,
-  inteliSHA256CheckAuthorizationHeader,
   inteliSHA256CheckValidity,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from 'app/tools/logger';
+import { getBestMatchRule } from './tools/hostMatch';
 
 // ==>
 // LOGGER INSTANCE
@@ -72,9 +72,9 @@ class ProxyServer {
       this.wsHttpServer = http.createServer();
       this.proxyHttpServer = http.createServer(
         (req: http.IncomingMessage, res: http.ServerResponse) => {
-          const host: Host = this.getTargetHost();
+          const host: Host = this.getTargetHost(req.url);
           if (host !== null) {
-            this.proxyServer.web(req, res, { target: host });
+            this.proxyServer.web(req, res, { target: host.target });
           } else {
             res.writeHead(503, { 'Content-Type': 'text/html' });
             res.end('Service unavailable', 'utf-8');
@@ -261,15 +261,32 @@ class ProxyServer {
    * @method ProxyServer#Host Get and return available host
    * @returns {Host} Target Host or null
    */
-  private getTargetHost(): Host {
-    let connection: Connection = this.hostsQueue.shift();
-    while (!this.hostsIndexMap.has(connection) && this.hostsQueue.length > 0) {
-      connection = this.hostsQueue.shift();
-    } // Looking for available host
-
-    if (this.hostsIndexMap.has(connection)) {
-      this.hostsQueue.push(connection);
-      return this.hostsIndexMap.get(connection);
+  private getTargetHost(path: string): Host {
+    let connection: Connection = undefined;
+    let counter = this.hostsQueue.length;
+    let isMatch = false;
+    const hosts: Host[] = this.hostsQueue
+      .filter((con) => this.hostsIndexMap.has(con))
+      .map((con) => this.hostsIndexMap.get(con));
+    const bestRule = getBestMatchRule(path, hosts);
+    logger.warn(`bestRule : ${bestRule}`);
+    let host: Host;
+    do {
+      while (
+        !this.hostsIndexMap.has(connection) &&
+        this.hostsQueue.length > 0
+      ) {
+        connection = this.hostsQueue.shift();
+        counter--;
+      }
+      if (this.hostsIndexMap.has(connection)) {
+        this.hostsQueue.push(connection);
+        host = this.hostsIndexMap.get(connection);
+        isMatch = bestRule === host.rule;
+      }
+    } while (counter > 0 && !isMatch);
+    if (this.hostsIndexMap.has(connection) && isMatch) {
+      return host;
     } else {
       logger.warn(
         `Inteli reverse-proxy server can't resolve web client request, no host registred`
@@ -373,7 +390,7 @@ class ProxyServer {
     if (_this.hostsIndexMap.has(connection)) {
       const host: Host = _this.hostsIndexMap.get(connection);
       logger.info(
-        `Websocket client connection close [${reason} | ${desc}]. {hostId: ${host.hostId}, host : ${host.host}, port : ${host.port}}`
+        `Websocket client connection close [${reason} | ${desc}]. {hostId: ${host.hostId}, host : ${host.target.host}, port : ${host.target.port}}`
       );
     } else if (_this.wsClientIndexMap.has(connection)) {
       const hostId: string = _this.wsClientIndexMap.get(connection);
@@ -399,7 +416,7 @@ class ProxyServer {
     if (_this.hostsIndexMap.has(connection)) {
       const host: Host = _this.hostsIndexMap.get(connection);
       logger.error(
-        `An error occured with client. {hostId: ${host.hostId}, host : ${host.host}, port : ${host.port}}\nError message : ${error.message}\nStack: ${error.stack}`
+        `An error occured with client. {hostId: ${host.hostId}, host : ${host.target.host}, port : ${host.target.port}}\nError message : ${error.message}\nStack: ${error.stack}`
       );
     } else {
       const hostId: string = _this.wsClientIndexMap.get(connection);

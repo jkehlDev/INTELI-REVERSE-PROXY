@@ -10,12 +10,21 @@ class EventFactory {
     inteliAgentSHA256: InteliAgentSHA256,
     version: string,
     host: string,
-    port: number
+    port: number,
+    rule: string = '/',
   ): Readonly<WebServerEvent> {
     return {
       header: { type: TypeEnum.webServer, action },
       authentification: inteliAgentSHA256,
-      payload: { hostId: inteliAgentSHA256.agentId, version, host, port },
+      payload: {
+        hostId: inteliAgentSHA256.agentId,
+        version,
+        rule,
+        target: {
+          host,
+          port,
+        },
+      },
     };
   }
   static makeSysAdminEvent(
