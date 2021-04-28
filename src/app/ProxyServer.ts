@@ -2,6 +2,7 @@
 import http from 'http';
 import https from 'https';
 import httpProxy from 'http-proxy';
+import fs from 'fs';
 import {
   connection as Connection,
   IMessage,
@@ -417,11 +418,28 @@ class ProxyServer {
     switch (event.header.action) {
       case ActionEnum.add:
         // TODO add cert to store
-        logger.info(`Sysadmin add event receive`);
+        logger.info(
+          `Sysadmin add public certificat to certstore event received for agentID:[${event.payload.hostId}].`
+        );
+        fs.writeFile(
+          `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`,
+          event.payload.publicKey,
+          (err) => {
+            if (err) throw err;
+          }
+        );
         break;
       case ActionEnum.remove:
         // TODO remove cert from store
-        logger.info(`Sysadmin remove event receive`);
+        logger.info(
+          `Sysadmin remove public certificat from certstore event received for agentID:[${event.payload.hostId}].`
+        );
+        fs.rm(
+          `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`,
+          (err) => {
+            if (err) throw err;
+          }
+        );
         break;
       default:
         const hostId: string = _this.wsClientIndexMap.get(connection);
