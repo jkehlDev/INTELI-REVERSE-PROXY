@@ -26,6 +26,23 @@ enum ServerStates {
 }
 
 /**
+ * @function wsClientMessageHandler That will occured if message send by server
+ * @param data Message data content
+ */
+function wsClientMessageHandler(data: IMessage) {
+  if (data.type === EventEncode.utf8) {
+    logger.warn(
+      `Inteli reverse-proxy webSocket client receive utf8 message : <${data.utf8Data}>`
+    );
+  }
+  if (data.type === EventEncode.binary) {
+    logger.warn(
+      `Inteli reverse-proxy webSocket client receive binary message : <${data.utf8Data}>`
+    );
+  }
+}
+
+/**
  * @class ProxyWebServer - This provide Inteli-reverse-proxy web server class
  * @version 1.00
  */
@@ -42,6 +59,8 @@ class ProxyWebServer {
   private port: number; // Http/Https server port
   private connection: Connection = null; // Websocket client connection instance
 
+  private messageHandler: (data: IMessage) => void; // Websocket client message handler
+
   /**
    * @constructor This provide instance Inteli-reverse-proxy web server (back-end web http server)
    * @param host - Inteli reverse-proxy web server host
@@ -53,7 +72,8 @@ class ProxyWebServer {
     host: string,
     port: number,
     agentId: string,
-    httpServer: http.Server | https.Server
+    httpServer: http.Server | https.Server,
+    messageHandler: (data: IMessage) => void = wsClientMessageHandler
   ) {
     this.host = host;
     this.port = port;
@@ -67,11 +87,13 @@ class ProxyWebServer {
       );
       throw err;
     }
+    this.messageHandler = messageHandler;
     this.httpServer = httpServer;
   }
 
   /**
    * @method ProxyWebServer#Start Start Inteli-reverse-proxy client
+   * @returns {Promise<boolean>} Resolve true if it start properly, false otherwise
    */
   public start(): Promise<boolean> {
     return new Promise((resolve, reject) => {
@@ -99,7 +121,7 @@ class ProxyWebServer {
               this.wsClientCloseHandler(this, code, desc);
             });
             connection.on('message', (data: IMessage) => {
-              this.wsClientMessageHandler(this, data);
+              this.messageHandler(data);
             });
 
             logger.info(
@@ -148,6 +170,7 @@ class ProxyWebServer {
 
   /**
    * @method ProxyWebServer#Stop Stop Inteli-reverse-proxy client
+   * @returns {Promise<boolean>} Resolve true if it stop properly, false otherwise
    */
   public stop(): Promise<boolean> {
     return new Promise((resolve, reject) => {
@@ -217,24 +240,6 @@ class ProxyWebServer {
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
-    }
-  }
-
-  /**
-   * @method ProxyWebServer#wsClientMessageHandler That will occured if message send by server
-   * @param _this Class instance context
-   * @param data Message data content
-   */
-  private wsClientMessageHandler(_this: ProxyWebServer, data: IMessage) {
-    if (data.type === EventEncode.utf8) {
-      logger.warn(
-        `Inteli reverse-proxy webSocket client receive utf8 message : <${data.utf8Data}>`
-      );
-    }
-    if (data.type === EventEncode.binary) {
-      logger.warn(
-        `Inteli reverse-proxy webSocket client receive binary message : <${data.utf8Data}>`
-      );
     }
   }
 
