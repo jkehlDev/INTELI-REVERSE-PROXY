@@ -4,7 +4,7 @@ import { InteliSHA256Factory } from 'app/inteliProtocol/Authentification/InteliA
 import http from 'http';
 
 if (!fs.existsSync(`${process.cwd()}/CLI_001_privateKey.pem`)) {
-  InteliSHA256Factory.genKeys('CLI_001');
+  InteliSHA256Factory.genKeys('WEB001');
 }
 
 // TEST Inteli proxy start and stop with delay
@@ -17,12 +17,12 @@ const proxyServer = new inteliProxy.ProxyServer(checkOrigin);
 proxyServer.start();
 setTimeout(() => {
   proxyServer.stop();
-}, 60000);
+}, 10000);
 
 const proxyClient = new inteliProxy.ProxyWebServer(
   'localhost',
   4242,
-  'CLI_001',
+  'WEB001',
   http.createServer((req, res) => {
     res.setHeader('content-type', 'text/plain');
     res.end('hello, world!');
@@ -32,5 +32,5 @@ setTimeout(() => {
   proxyClient.start();
   setTimeout(() => {
     proxyClient.stop();
-  }, 40000);
+  }, 4000);
 }, 2000);
