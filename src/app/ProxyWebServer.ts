@@ -63,10 +63,7 @@ class ProxyWebServer {
       );
     } catch (err) {
       logger.error(
-        `An error occured during instanciation of Inteli reverse-proxy web server.
-          Error message : ${err.message}
-          Stack: ${err.stack}
-        `
+        `An error occured during instanciation of Inteli reverse-proxy web server [${agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
       );
       throw err;
     }
@@ -82,14 +79,12 @@ class ProxyWebServer {
         if (this.state === ServerStates.CLOSE) {
           this.state = ServerStates.PENDING;
           logger.info(
-            `Inteli reverse-proxy web server start in progress (2 steps)...`
+            `Inteli reverse-proxy web server start in progress (2 steps) [${this.inteliAgentSHA256.agentId}] ...`
           );
 
           this.wsClient.on('connectFailed', (err: Error) => {
             logger.error(
-              `Inteli reverse-proxy websocket client event - An error occured when attempted websocket connection
-              Error message : ${err.message}
-              Stack: ${err.stack}`
+              `An error occured when attempted websocket connection [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
             );
             this.state = ServerStates.CLOSE;
             reject(err);
@@ -108,11 +103,11 @@ class ProxyWebServer {
             });
 
             logger.info(
-              `Inteli reverse-proxy web server start (1/2) : websocket client start`
+              `Inteli reverse-proxy web server start (1/2) [${this.inteliAgentSHA256.agentId}]: websocket client start`
             );
             this.httpServer.listen(this.port, () => {
               logger.info(
-                `Inteli reverse-proxy web server start (2/2) : web server start on port [${this.port}]`
+                `Inteli reverse-proxy web server start (2/2) [${this.inteliAgentSHA256.agentId}]: web server start on port [${this.port}]`
               );
               const openProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
                 ActionEnum.open,
@@ -132,21 +127,19 @@ class ProxyWebServer {
           };
           this.wsClient.connect(
             `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-            'inteli',
+            inteliConfig.wsprotocol,
             this.host,
             headers
           );
         } else {
           logger.warn(
-            `Inteli reverse-proxy web server start attempt aborded: server is already start or in intermediate state`
+            `Inteli reverse-proxy web server start attempt aborded [${this.inteliAgentSHA256.agentId}]: server is already start or in intermediate state`
           );
           resolve(false);
         }
       } catch (err) {
         logger.error(
-          `An error occured when proxy web server attempt to start.
-            Error message : ${err.message}
-            Stack: ${err.stack}`
+          `An error occured when proxy web server attempt to start [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
         );
         reject(err);
       }
@@ -162,26 +155,24 @@ class ProxyWebServer {
         if (this.state === ServerStates.OPEN) {
           this.state = ServerStates.PENDING;
           logger.info(
-            `Inteli reverse-proxy web server stop in progress (2 steps) ...`
+            `Inteli reverse-proxy web server stop in progress (2 steps) [${this.inteliAgentSHA256.agentId}] ...`
           );
           try {
             this.connection.close();
             logger.info(
-              `Inteli reverse-proxy web server stop (1/2) : websocket client stop`
+              `Inteli reverse-proxy web server stop (1/2) [${this.inteliAgentSHA256.agentId}]: websocket client stop`
             );
             setTimeout(() => {
               if (this.httpServer.listening) {
                 this.httpServer.close((err?: Error) => {
                   if (err) {
                     logger.error(
-                      `An error occured when Inteli reverse-proxy web server attempted to stop 
-                        Error message : ${err.message}
-                        Stack: ${err.stack}`
+                      `An error occured when Inteli reverse-proxy web server attempted to stop [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
                     );
                     reject(err);
                   } else {
                     logger.info(
-                      `Inteli reverse-proxy web server stop (2/2) : web server stop on port [${this.port}]`
+                      `Inteli reverse-proxy web server stop (2/2) [${this.inteliAgentSHA256.agentId}]: web server stop on port [${this.port}]`
                     );
                     this.state = ServerStates.CLOSE;
                     resolve(true);
@@ -191,23 +182,19 @@ class ProxyWebServer {
             }, inteliConfig.webserver.closeTimeout);
           } catch (err) {
             logger.error(
-              `An error occured when Inteli reverse-proxy web server attempted to stop 
-              Error message : ${err.message}
-              Stack: ${err.stack}`
+              `An error occured when Inteli reverse-proxy web server attempted to stop [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
             );
             reject(err);
           }
         } else {
           logger.warn(
-            `Inteli reverse-proxy web server stop attempt aborded: server is already stop or in intermediate state`
+            `Inteli reverse-proxy web server stop attempt aborded [${this.inteliAgentSHA256.agentId}]: server is already stop or in intermediate state`
           );
           resolve(false);
         }
       } catch (err) {
         logger.error(
-          `An error occured when proxy web server attempt to stop.
-            Error message : ${err.message}
-            Stack: ${err.stack}`
+          `An error occured when proxy web server attempt to stop [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
         );
         reject(err);
       }
@@ -226,7 +213,7 @@ class ProxyWebServer {
     desc: string
   ) {
     logger.info(
-      `Inteli reverse-proxy webSocket client disconnected, reason : ${code} - ${desc}`
+      `Inteli reverse-proxy webSocket client disconnected [${_this.inteliAgentSHA256.agentId}], reason : ${code} - ${desc}`
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
@@ -258,9 +245,7 @@ class ProxyWebServer {
    */
   private wsClientErrorHandler(_this: ProxyWebServer, err: Error) {
     logger.error(
-      `Inteli reverse-proxy websocket client event - An error occured
-        Error message : ${err.message}
-        Stack: ${err.stack}`
+      `An error occured on websocket client [${_this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();

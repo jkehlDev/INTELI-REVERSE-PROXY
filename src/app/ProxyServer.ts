@@ -10,14 +10,19 @@ import {
 } from 'websocket';
 import inteliConfig from 'inteliProxyConfig.json';
 import Host from 'app/inteliProtocol/webServerEvent/Host';
+import InteliEvent from 'app/inteliProtocol/InteliEvent';
+import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
 import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
+import TypeEnum from './inteliProtocol/enums/EventTypes';
 import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import EventEncode from 'app/inteliProtocol/enums/EventEncode';
-import {
+import InteliAgentSHA256, {
+  getInteliSHA256FrmAuthorizationHeader,
   inteliSHA256CheckAuthorizationHeader,
   inteliSHA256CheckValidity,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from 'app/tools/logger';
+
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -34,6 +39,7 @@ enum ServerStates {
  */
 class ProxyServer {
   private state: ServerStates = ServerStates.CLOSE; // Current server state
+  private wsClientIndexMap: WeakMap<Connection, string>; // Indexed websocket active client collection on connection object (connection obj as index key)
   private hostsIndexMap: WeakMap<Connection, Host>; // Indexed host collection on connection object (connection obj as index key)
   private hostsQueue: Array<Connection>; // Load balancer hosts connection queue
 
@@ -54,9 +60,6 @@ class ProxyServer {
     try {
       this.wsServer.on('request', (request: Request) => {
         this.wsServerRequestHandler(this, request);
-      });
-      this.wsServer.on('connect', (connection: Connection) => {
-        this.wsServerConnectHandler(this, connection);
       });
       this.wsServer.on(
         'close',
@@ -79,9 +82,7 @@ class ProxyServer {
       );
     } catch (err) {
       logger.error(
-        `An error occured during instanciation of Inteli reverse-proxy server.
-          Error message : ${err.message}
-          Stack: ${err.stack}`
+        `An error occured during instanciation of Inteli reverse-proxy server.\nError message : ${err.message}\nStack: ${err.stack}`
       );
       throw err;
     }
@@ -99,6 +100,7 @@ class ProxyServer {
           logger.info(`Inteli reverse-proxy start in progress (2 steps)...`);
 
           this.hostsIndexMap = new WeakMap();
+          this.wsClientIndexMap = new WeakMap();
           this.hostsQueue = new Array(0);
 
           // Websocket server mounting
@@ -130,9 +132,7 @@ class ProxyServer {
         }
       } catch (err) {
         logger.error(
-          `An error occured when Inteli reverse-proxy server attempt to start.
-            Error message : ${err.message}
-            Stack: ${err.stack}`
+          `An error occured when Inteli reverse-proxy server attempt to start.\nError message : ${err.message}\nStack: ${err.stack}`
         );
         reject(err);
       }
@@ -157,9 +157,7 @@ class ProxyServer {
             this.proxyHttpServer.close((err: Error) => {
               if (err) {
                 logger.error(
-                  `An error occured when Inteli reverse-proxy server attempted to stop 
-                  Error message : ${err.message}
-                  Stack: ${err.stack}`
+                  `An error occured when Inteli reverse-proxy server attempted to stop.\nError message : ${err.message}\nStack: ${err.stack}`
                 );
                 reject(err);
               } else {
@@ -176,10 +174,7 @@ class ProxyServer {
             this.wsHttpServer.close((err: Error) => {
               if (err) {
                 logger.error(
-                  `An error occured when Inteli reverse-proxy websocket server attempted to stop 
-                  Error message : ${err.message}
-                  Stack: ${err.stack}
-                `
+                  `An error occured when Inteli reverse-proxy websocket server attempted to stop.\nError message : ${err.message}\nStack: ${err.stack}`
                 );
                 reject(err);
               } else {
@@ -187,6 +182,8 @@ class ProxyServer {
                   `Inteli reverse-proxy server stop (2/2) : reverse-proxy server stop on port [${process.env.PROXY_PORT}]`
                 );
                 this.state = ServerStates.CLOSE;
+                this.wsClientIndexMap = new WeakMap();
+                this.hostsIndexMap = new WeakMap();
                 resolve(true);
               }
             });
@@ -199,13 +196,64 @@ class ProxyServer {
         }
       } catch (err) {
         logger.error(
-          `An error occured when Inteli reverse-proxy server attempt to stop.
-            Error message : ${err.message}
-            Stack: ${err.stack}`
+          `An error occured when Inteli reverse-proxy server attempt to stop.\nError message : ${err.message}\nStack: ${err.stack}`
         );
         reject(err);
       }
     });
+  }
+
+  /**
+   * @method ProxyServer#wsServerRequestHandler WS server request event handler
+   * @param _this Class instance context
+   * @param request WS HTTP request object
+   */
+  private async wsServerRequestHandler(_this: ProxyServer, request: Request) {
+    logger.info(
+      `New websocket client try to connect to Inteli reverse-proxy websocket server from : ${request.origin}`
+    );
+    let inteliSHA256: InteliAgentSHA256;
+    try {
+      inteliSHA256 = getInteliSHA256FrmAuthorizationHeader(
+        request.httpRequest.headers.authorization
+      );
+      if (
+        !(await _this.checkOrigin(request.origin)) ||
+        !inteliSHA256CheckValidity(inteliSHA256) ||
+        request.requestedProtocols[0] !== inteliConfig.wsprotocol
+      ) {
+        request.reject(401); // Reject unauthaurized client
+        logger.warn(
+          `New websocket client connection REJECTED from ${request.origin}.\nAuthorization : <${request.httpRequest.headers.authorization}>`
+        );
+        return;
+      }
+    } catch (err) {
+      request.reject(401); // Reject client if an error append
+      logger.warn(
+        `New websocket client connection REJECTED from ${request.origin}.\nAuthorization : <${request.httpRequest.headers.authorization}>`
+      );
+      return;
+    }
+    const connection: Connection = request.accept(
+      request.requestedProtocols[0],
+      request.origin
+    ); // Accept client connection and obtain connection object
+    logger.info(
+      `New websocket client connection ACCEPTED from ${request.origin}. From agentId: [${inteliSHA256.agentId}]`
+    );
+    _this.wsClientIndexMap.set(connection, inteliSHA256.agentId);
+    // <=== Handling client connection events
+    connection.on('message', (data: IMessage) => {
+      _this.wsCliMessageHandler(_this, connection, data);
+    });
+    connection.on('close', (code: number, desc: string) => {
+      _this.wsCliCloseHandler(_this, connection, code, desc);
+    });
+    connection.on('error', (error) => {
+      _this.wsCliErrorHandler(_this, connection, error);
+    });
+    // ===>
   }
 
   /**
@@ -230,64 +278,6 @@ class ProxyServer {
   }
 
   /**
-   * @method ProxyServer#wsServerRequestHandler WS server request event handler
-   * @param _this Class instance context
-   * @param request WS HTTP request object
-   */
-  private async wsServerRequestHandler(_this: ProxyServer, request: Request) {
-    logger.info(
-      `New websocket client try to connect to Inteli reverse-proxy websocket server from : ${request.origin}`
-    );
-    try {
-      if (
-        !(await _this.checkOrigin(request.origin)) ||
-        !inteliSHA256CheckAuthorizationHeader(
-          request.httpRequest.headers.authorization
-        )
-      ) {
-        request.reject(401); // Reject all unauthaurized client
-        logger.warn(
-          `New websocket client connection REJECTED from ${request.origin}
-          Authorization : <${request.httpRequest.headers.authorization}>`
-        );
-        return;
-      } else {
-        logger.info(
-          `New websocket client connection ACCEPTED from ${request.origin}
-          Authorization : <${request.httpRequest.headers.authorization}>`
-        );
-      }
-    } catch (err) {
-      request.reject(401); // Reject all unauthaurized client
-      logger.warn(
-        `New websocket client connection REJECTED from ${request.origin}
-        Authorization : <${request.httpRequest.headers.authorization}>`
-      );
-      return;
-    }
-
-    const connection: Connection = request.accept('inteli', request.origin); // Accept client connection and obtain connection object
-    // <=== Handling client connection events
-    connection.on('message', (data: IMessage) => {
-      _this.wsCliMessageHandler(_this, connection, data);
-    });
-    connection.on('close', (code: number, desc: string) => {
-      _this.wsCliCloseHandler(_this, connection, code, desc);
-    });
-    connection.on('error', (error) => {
-      _this.wsCliErrorHandler(_this, connection, error);
-    });
-    // ===>
-  }
-
-  /**
-   * @method ProxyServer#wsServerConnectHandler WS server connect event handler
-   * @param _this Class instance context
-   * @param connection WS client connection object
-   */
-  private wsServerConnectHandler(_this: ProxyServer, connection: Connection) {}
-
-  /**
    * @method ProxyServer#wsServerCloseHandler WS server close event handler
    * @param _this Class instance context
    * @param connection WS client connection object
@@ -300,16 +290,7 @@ class ProxyServer {
     reason: number,
     desc: string
   ) {
-    if (_this.hostsIndexMap.has(connection)) {
-      const host: Host = _this.hostsIndexMap.get(connection);
-      logger.info(
-        `Inteli reverse-proxy websocket server event - Websocket client close connection [${reason} | ${desc}], 
-          hostId: ${host.hostId}
-          host : ${host.host}
-          port : ${host.port}`
-      );
-      _this.hostsIndexMap.delete(connection);
-    }
+    _this.wsCliCloseHandler(_this, connection, reason, desc);
   }
 
   /**
@@ -323,53 +304,54 @@ class ProxyServer {
     connection: Connection,
     data: IMessage
   ) {
-    if ((data.type = EventEncode.utf8)) {
-      const event: WebServerEvent = JSON.parse(data.utf8Data);
-      if (inteliSHA256CheckValidity(event.authentification)) {
-        try {
-          if (event.header.action === ActionEnum.open) {
-            _this.hostsIndexMap.set(connection, event.payload);
-            _this.hostsQueue.push(connection);
-          } else if (event.header.action === ActionEnum.close) {
-            _this.hostsIndexMap.delete(connection);
-            connection.close(Connection.CLOSE_REASON_NORMAL, `NORMAL CLOSE`);
-          } else {
-            const host: Host = _this.hostsIndexMap.get(connection);
-            logger.warn(
-              `Invalid websocket client message action type recieved: <${event.header.action}>
-                From hostId: ${host.hostId}`
-            );
-            _this.hostsIndexMap.delete(connection);
-            connection.close(
-              Connection.CLOSE_REASON_PROTOCOL_ERROR,
-              'PROTOCOL_ERROR'
-            );
+    const hostId: string = _this.wsClientIndexMap.get(connection);
+    try {
+      if ((data.type = EventEncode.utf8)) {
+        const event: InteliEvent<TypeEnum, ActionEnum, any, any> = JSON.parse(
+          data.utf8Data
+        );
+        if (inteliSHA256CheckValidity(event.authentification)) {
+          switch (event.header.type) {
+            case TypeEnum.sysadmin:
+              this.handleTypeSysAdminEvent(
+                _this,
+                connection,
+                event as SysAdminEvent
+              );
+              break;
+            case TypeEnum.webServer:
+              this.handleTypeWebServerEvent(
+                _this,
+                connection,
+                event as WebServerEvent
+              );
+              break;
+            default:
+              logger.warn(
+                `Invalid websocket client message type recieved: <${event.header.type}>. From hostId:  ${hostId}`
+              );
+              connection.close(
+                Connection.CLOSE_REASON_PROTOCOL_ERROR,
+                'PROTOCOL_ERROR'
+              );
+              break;
           }
-        } catch (error) {
-          const host: Host = _this.hostsIndexMap.get(connection);
-          logger.error(
-            `Invalid websocket client message recieved : <${event}>
-              From hostId: ${host.hostId}`
+        } else {
+          logger.warn(
+            `Unhautorized websocket client detected : Client signature invalid. From hostId: [${hostId}]`
           );
-          _this.hostsIndexMap.delete(connection);
           connection.close(Connection.CLOSE_REASON_RESERVED, 'RESERVED');
         }
       } else {
-        const host: Host = _this.hostsIndexMap.get(connection);
         logger.warn(
-          `Unhautorized websocket client detected, client signature invalid. 
-            From hostId: ${host.hostId}`
+          `Invalid websocket message type recieved: <${data.type}>. From hostId: [${hostId}]`
         );
-        _this.hostsIndexMap.delete(connection);
-        connection.close(Connection.CLOSE_REASON_RESERVED, 'RESERVED');
+        connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
       }
-    } else {
-      const host: Host = _this.hostsIndexMap.get(connection);
-      logger.warn(
-        `Invalid websocket message type recieved: <${data.type}> 
-          From hostId: ${host.hostId}`
+    } catch (error) {
+      logger.error(
+        `Invalid websocket client message recieved : <${data}>. From hostId: [${hostId}]`
       );
-      _this.hostsIndexMap.delete(connection);
       connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
     }
   }
@@ -390,14 +372,16 @@ class ProxyServer {
     if (_this.hostsIndexMap.has(connection)) {
       const host: Host = _this.hostsIndexMap.get(connection);
       logger.info(
-        `Inteli reverse-proxy websocket server event - Websocket client close connection [${reason} | ${desc}], 
-          hostId: ${host.hostId}
-          host : ${host.host}
-          port : ${host.port}
-    `
+        `Websocket client connection close [${reason} | ${desc}]. {hostId: ${host.hostId}, host : ${host.host}, port : ${host.port}}`
       );
-      _this.hostsIndexMap.delete(connection);
+    } else if (_this.wsClientIndexMap.has(connection)) {
+      const hostId: string = _this.wsClientIndexMap.get(connection);
+      logger.info(
+        `Websocket client connection close [${reason} | ${desc}]. From hostId: [${hostId}]`
+      );
     }
+    _this.hostsIndexMap.delete(connection);
+    _this.wsClientIndexMap.delete(connection);
   }
 
   /**
@@ -411,18 +395,72 @@ class ProxyServer {
     connection: Connection,
     error: Error
   ) {
-    const host: Host = _this.hostsIndexMap.get(connection);
-    logger.error(
-      `Inteli reverse-proxy websocket server event - An error occured with client, 
-        hostId: ${host.hostId}
-        host : ${host.host}
-        port : ${host.port}
-        
-        Error message : ${error.message}
-        Stack: ${error.stack}
-      `
-    );
+    if (_this.hostsIndexMap.has(connection)) {
+      const host: Host = _this.hostsIndexMap.get(connection);
+      logger.error(
+        `An error occured with client. {hostId: ${host.hostId}, host : ${host.host}, port : ${host.port}}\nError message : ${error.message}\nStack: ${error.stack}`
+      );
+    } else {
+      const hostId: string = _this.wsClientIndexMap.get(connection);
+      logger.error(
+        `An error occured with client. From hostId: [${hostId}].\nError message : ${error.message}\nStack: ${error.stack}`
+      );
+    }
     connection.close(Connection.CLOSE_REASON_PROTOCOL_ERROR, 'PROTOCOL_ERROR');
   }
+
+  private handleTypeSysAdminEvent(
+    _this: ProxyServer,
+    connection: Connection,
+    event: SysAdminEvent
+  ) {
+    switch (event.header.action) {
+      case ActionEnum.add:
+        // TODO add cert to store
+        logger.info(`Sysadmin add event receive`);
+        break;
+      case ActionEnum.remove:
+        // TODO remove cert from store
+        logger.info(`Sysadmin remove event receive`);
+        break;
+      default:
+        const hostId: string = _this.wsClientIndexMap.get(connection);
+        logger.warn(
+          `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
+        );
+        connection.close(
+          Connection.CLOSE_REASON_PROTOCOL_ERROR,
+          'PROTOCOL_ERROR'
+        );
+        break;
+    }
+  }
+
+  private handleTypeWebServerEvent(
+    _this: ProxyServer,
+    connection: Connection,
+    event: WebServerEvent
+  ) {
+    switch (event.header.action) {
+      case ActionEnum.open:
+        _this.hostsIndexMap.set(connection, event.payload);
+        _this.hostsQueue.push(connection);
+        break;
+      case ActionEnum.close:
+        connection.close(Connection.CLOSE_REASON_NORMAL, `NORMAL CLOSE`);
+        break;
+      default:
+        const hostId: string = _this.wsClientIndexMap.get(connection);
+        logger.warn(
+          `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
+        );
+        connection.close(
+          Connection.CLOSE_REASON_PROTOCOL_ERROR,
+          'PROTOCOL_ERROR'
+        );
+        break;
+    }
+  }
 }
+
 export default ProxyServer;

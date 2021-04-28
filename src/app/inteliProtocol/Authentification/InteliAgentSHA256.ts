@@ -107,6 +107,28 @@ export function inteliSHA256CheckValidity(
   return cryptoVerify.verify(publicKey, inteliSHA256.signature, 'hex');
 }
 
+export function getInteliSHA256FrmAuthorizationHeader(
+  authorization: string
+): InteliAgentSHA256 {
+  if (authorization.includes('INTELI-SHA256')) {
+    let inteliSHA256: InteliAgentSHA256 = {};
+    authorization
+      .replace('INTELI-SHA256 ', '')
+      .split(', ')
+      .forEach((entry: string) => {
+        const arg: string[] = entry.split('=');
+        switch (arg[0]) {
+          case 'AgentId':
+            inteliSHA256.agentId = arg[1];
+          case 'Signature':
+            inteliSHA256.signature = arg[1];
+        }
+      });
+    return inteliSHA256;
+  }
+  throw new Error(`Authorization header invalid : <${authorization}>`);
+}
+
 export function inteliSHA256CheckAuthorizationHeader(authorization: string) {
   if (authorization.includes('INTELI-SHA256')) {
     let inteliSHA256: InteliAgentSHA256 = {};

@@ -1,4 +1,5 @@
 {
+  "wsprotocol": "inteli-protocol-v1.00",
   "wsServerMount": {
     "keepalive": true,
     "keepaliveInterval": 20000,
