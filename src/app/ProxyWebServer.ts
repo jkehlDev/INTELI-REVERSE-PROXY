@@ -67,6 +67,7 @@ class ProxyWebServer {
    * @param port - Inteli reverse-proxy web server port
    * @param agentId - Inteli reverse-proxy web server identifiant
    * @param httpServer - Inteli reverse-proxy web server (http/https)
+   * @param messageHandler - Websocket client message handler (optional)
    */
   constructor(
     host: string,
