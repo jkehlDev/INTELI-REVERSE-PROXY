@@ -17,8 +17,10 @@ import {
   inteliSHA256CheckAuthorizationHeader,
   inteliSHA256CheckValidity,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import logger from 'app/tools/logger';
+import getLogger from 'app/tools/logger';
 // ==>
+// LOGGER INSTANCE
+const logger = getLogger('ProxySysAdmin');
 
 enum ServerStates {
   CLOSE,
@@ -204,23 +206,32 @@ class ProxyServer {
     logger.info(
       `New websocket client try to connect to Inteli reverse-proxy websocket server from : ${request.origin}`
     );
-    if (
-      !(await _this.checkOrigin(request.origin)) ||
-      !inteliSHA256CheckAuthorizationHeader(
-        request.httpRequest.headers.authorization
-      )
-    ) {
+    try {
+      if (
+        !(await _this.checkOrigin(request.origin)) ||
+        !inteliSHA256CheckAuthorizationHeader(
+          request.httpRequest.headers.authorization
+        )
+      ) {
+        request.reject(401); // Reject all unauthaurized client
+        logger.warn(
+          `New websocket client connection REJECTED from ${request.origin}
+          Authorization : <${request.httpRequest.headers.authorization}>`
+        );
+        return;
+      } else {
+        logger.info(
+          `New websocket client connection ACCEPTED from ${request.origin}
+          Authorization : <${request.httpRequest.headers.authorization}>`
+        );
+      }
+    } catch (err) {
       request.reject(401); // Reject all unauthaurized client
       logger.warn(
         `New websocket client connection REJECTED from ${request.origin}
-          Authorization : <${request.httpRequest.headers.authorization}>`
+        Authorization : <${request.httpRequest.headers.authorization}>`
       );
       return;
-    } else {
-      logger.info(
-        `New websocket client connection ACCEPTED from ${request.origin}
-          Authorization : <${request.httpRequest.headers.authorization}>`
-      );
     }
 
     const connection: Connection = request.accept('inteli', request.origin); // Accept client connection and obtain connection object
@@ -242,8 +253,7 @@ class ProxyServer {
    * @param _this Class instance context
    * @param connection WS client connection object
    */
-  private wsServerConnectHandler(_this: ProxyServer, connection: Connection) {
-  }
+  private wsServerConnectHandler(_this: ProxyServer, connection: Connection) {}
 
   /**
    * @method ProxyServer#wsServerCloseHandler WS server close event handler

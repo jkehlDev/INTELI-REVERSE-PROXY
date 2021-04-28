@@ -1,4 +1,6 @@
-import logger from 'app/tools/logger';
+import getLogger from 'app/tools/logger';
+// LOGGER INSTANCE
+const logger = getLogger('InteliProxy');
 
 /**
  * @module Inteli-reverse-proxy

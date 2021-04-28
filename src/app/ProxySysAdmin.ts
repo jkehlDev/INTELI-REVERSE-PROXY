@@ -3,8 +3,6 @@ import InteliAgentSHA256, {
   InteliSHA256Factory,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import EventEncode from 'app/inteliProtocol/enums/EventEncode';
-import logger from 'app/tools/logger';
-import yargs from 'yargs';
 import http from 'http';
 import {
   client as WsClient,
@@ -15,10 +13,11 @@ import fs from 'fs';
 import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
 import SysAdminEvent from 'app/inteliProtocol/sysAdminEvent/SysAdminEvent';
-import { resolve } from 'node:path';
-import { rejects } from 'node:assert';
-
+import getLogger from 'app/tools/logger';
 // ==>
+// LOGGER INSTANCE
+const logger = getLogger('ProxySysAdmin');
+
 
 enum ServerStates {
   CLOSE,
@@ -72,7 +71,7 @@ class ProxySysAdmin {
         const headers: http.OutgoingHttpHeaders = {
           Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
         };
-        
+
         this.wsClient.on('connect', (connection: Connection) => {
           this.connection = connection;
           connection.on('error', (err: Error) => {

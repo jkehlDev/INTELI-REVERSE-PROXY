@@ -1,4 +1,3 @@
-import logger from 'app/tools/logger';
 import {
   createSign,
   createVerify,
@@ -6,9 +5,10 @@ import {
   Signer,
   Verify,
 } from 'crypto';
-
 import fs from 'fs';
-
+import getLogger from 'app/tools/logger';
+// LOGGER INSTANCE
+const logger = getLogger('InteliSHA256Factory');
 
 // TIPS https://nodejs.org/api/crypto.html#crypto_class_sign
 
@@ -18,31 +18,32 @@ export default interface InteliAgentSHA256 {
 }
 
 export class InteliSHA256Factory {
-  public static genKeys(agentId: string) {
-    // Generate private and public pair keys
-    const { privateKey, publicKey } = generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  public static genKeys(agentId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Generate private and public pair keys
+      const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      // Write private key
+      fs.writeFile(
+        `${process.cwd()}/${agentId}_privateKey.pem`,
+        privateKey,
+        (err) => {
+          if (err) reject(err);
+          // Write public key
+          fs.writeFile(
+            `${process.cwd()}/${agentId}_publicKey.pem`,
+            publicKey,
+            (err) => {
+              if (err) reject(err);
+              resolve();
+            }
+          );
+        }
+      );
     });
-
-    // Write private key
-    fs.writeFile(
-      `${process.cwd()}/${agentId}_privateKey.pem`,
-      privateKey,
-      function (err) {
-        if (err) throw err;
-      }
-    );
-
-    // Write public key
-    fs.writeFile(
-      `${process.cwd()}/${agentId}_publicKey.pem`,
-      publicKey,
-      function (err) {
-        if (err) throw err;
-      }
-    );
   }
 
   public static makeInteliAgentSHA256(agentId: string): InteliAgentSHA256 {

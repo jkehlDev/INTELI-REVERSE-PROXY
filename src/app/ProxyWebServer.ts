@@ -14,8 +14,10 @@ import inteliConfig from 'inteliProxyConfig.json';
 import InteliAgentSHA256, {
   InteliSHA256Factory,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import logger from 'app/tools/logger';
+import getLogger from 'app/tools/logger';
 // ==>
+// LOGGER INSTANCE
+const logger = getLogger('ProxyWebServer');
 
 enum ServerStates {
   CLOSE,

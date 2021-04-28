@@ -1,32 +1,37 @@
-import { createLogger, format, transports } from 'winston';
+import { createLogger, Logger, format, transports } from 'winston';
 
-const logger = createLogger({
-  level: 'info',
-  format: format.combine(
-    format.timestamp(),
-    format.label({label : `filename`}),
-    format.colorize(),
+const { combine, timestamp, label, colorize, uncolorize, printf } = format;
+const defaultFormat = printf(({ level, message, label, timestamp }) => {
+  return `[${timestamp}, ${level}, ${label}] ${message}`;
+});
+
+function getLogger(origin: string): Logger {
+  const logger = createLogger({
+    level: 'info',
+    format: combine(
+      timestamp(),
+      label({ label: origin }),
+      uncolorize(),
+      defaultFormat
     ),
-    
     transports: [
-      new transports.File({ filename: 'error.log', level: 'error' }),
-      new transports.File({ filename: 'combined.log' }),
+      new transports.File({ filename: 'syserr.log', level: 'error' }),
+      new transports.File({ filename: 'sysout.log' }),
     ],
   });
-  
-  const myMessage = format.printf(({ timestamp, level, label, message}) => {
-    return `${timestamp} ${level}: [${label}] ${message}`;
-  });
-//
-// If we're not in production then log to the `console` with the format:
-// `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-//
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new transports.Console({
-        format: myMessage,
-    })
-  )
+  if (process.env.NODE_ENV !== 'production') {
+    logger.add(
+      new transports.Console({
+        format: combine(
+          timestamp(),
+          label({ label: origin }),
+          colorize(),
+          defaultFormat
+        ),
+      })
+    );
+  }
+  return logger;
 }
 
-export default logger;
+export default getLogger;

@@ -1,6 +1,10 @@
 import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import ProxySysAdmin from 'app/ProxySysAdmin';
-import logger from 'app/tools/logger';
+import getLogger from 'app/tools/logger';
+// ==>
+// LOGGER INSTANCE
+const logger = getLogger('InteliSysAdmin');
+
 import Yargs from 'yargs';
 const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin();
 Yargs(process.argv.slice(2))

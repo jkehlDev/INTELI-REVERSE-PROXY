@@ -1,9 +1,7 @@
 import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
 import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
-import InteliAgentSHA256, {
-  InteliSHA256Factory,
-} from './Authentification/InteliAgentSHA256';
+import InteliAgentSHA256 from './Authentification/InteliAgentSHA256';
 import SysAdminEvent from './sysAdminEvent/SysAdminEvent';
 
 class EventFactory {
