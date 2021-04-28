@@ -20,7 +20,7 @@ import {
 import getLogger from 'app/tools/logger';
 // ==>
 // LOGGER INSTANCE
-const logger = getLogger('ProxySysAdmin');
+const logger = getLogger('ProxyServer');
 
 enum ServerStates {
   CLOSE,
@@ -48,7 +48,6 @@ class ProxyServer {
   /**
    * @constructor This provide instance of Inteli-proxy server
    * @param cb - Callback provide origin check before accept new host connection (For CORS)
-   * @param sysAdminPublicKeyFileName - Websocket client RSA public key validity check
    */
   constructor(cb: (origin: string) => Promise<boolean>) {
     this.checkOrigin = async (origin) => await cb(origin);
@@ -90,6 +89,7 @@ class ProxyServer {
 
   /**
    * @method ProxyServer#start Start Inteli Proxy server
+   * @returns {Promise<boolean>} A promise resolve true if server properly start or false overwise
    */
   public start(): Promise<boolean> {
     return new Promise((resolve, reject) => {
@@ -141,6 +141,7 @@ class ProxyServer {
 
   /**
    * @method ProxyServer#stop Stop Inteli Proxy server
+   * @returns {Promise<boolean>} A promise resolve true if server properly stop or false overwise
    */
   public stop(): Promise<boolean> {
     return new Promise((resolve, reject) => {
