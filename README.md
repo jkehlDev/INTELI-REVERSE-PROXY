@@ -1,14 +1,15 @@
 # INTELI-REVERSE-PROXY
 
-Inteli-reverse-proxy, is a small and smart reverse proxy with simpliest load balancer for HTTP/HTTPS WEB Server.
+Inteli-reverse-proxy, is a small and smart reverse proxy with simpliest automatic load balancer for HTTP/HTTPS WEB Server.
 
-Web server and reverse-proxy establish websocket connection, 
-When Web server start, it broadcast to reverse-proxy it can receive web client request and reverse-praxy add it to it's target web servers list.
+Web server and reverse-proxy establish a connection through websocket,
+When a Web server starts, it deal with the reverse-proxy to communicate his status and be ready to receive web client request.
+Then, the reverse proxy target him to store in his web server list.
 
-When Web server stop (versionning, resolving issue, ...), it broadcast to proxy that it can't receive anymore web client request and proxy delete it from it's target web server list.
+And when it stops, the web server disconnect from the reverse-proxy and be deleted from his lists.
 
-Broadcast between reverse-proxy and web server are secure by TSL and with a signed SHA-256 web server id.
-Proxy test by interval if each web server is curently online with a ping-pong websocket exchange.
+Communication between reverse-proxy and web server is secured by TSL and a signed SHA-256 web server id.
+Proxy monitors the status of each web server at regular intervals with a ping-pong websocket exchange.
 
 ```
  WEB CLIENT          INTELI-REVERSE-PROXY               WEB SERVER
@@ -42,4 +43,4 @@ Proxy test by interval if each web server is curently online with a ping-pong we
                                ...                         
                                 |                           
                               STOP
-``` 
+```
