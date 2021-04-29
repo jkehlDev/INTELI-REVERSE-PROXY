@@ -253,7 +253,7 @@ class ProxyWebServer {
     desc: string
   ) {
     logger.info(
-      `Client disconnected [${_this.inteliAgentSHA256.agentId}], reason : ${code} - ${desc}`
+      `Client disconnected [${_this.inteliAgentSHA256.agentId}], reason : [${code} | ${desc}]`
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();

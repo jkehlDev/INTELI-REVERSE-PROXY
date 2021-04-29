@@ -54,10 +54,7 @@ class ProxySysAdmin {
       );
     } catch (err) {
       logger.error(
-        `An error occured during instanciation of Inteli reverse-proxy sysadmin.
-          Error message : ${err.message}
-          Stack: ${err.stack}
-        `
+        `An error occured during instanciation of Inteli reverse-proxy sysadmin.\nError message : ${err.message}\nStack: ${err.stack}`
       );
       throw err;
     }
@@ -97,9 +94,7 @@ class ProxySysAdmin {
 
           this.wsClient.on('connectFailed', (err: Error) => {
             logger.error(
-              `Inteli reverse-proxy sysadmin event - An error occured when attempted websocket connection
-              Error message : ${err.message}
-              Stack: ${err.stack}`
+              `Inteli reverse-proxy sysadmin event - An error occured when attempted websocket connection.\nError message : ${err.message}\nStack: ${err.stack}`
             );
             this.state = ServerStates.CLOSE;
             reject(err);
@@ -155,9 +150,7 @@ class ProxySysAdmin {
         }
       } catch (err) {
         logger.error(
-          `An error occured when Inteli reverse-proxy sysadmin attempted to stop 
-        Error message : ${err.message}
-        Stack: ${err.stack}`
+          `An error occured when Inteli reverse-proxy sysadmin attempted to stop.\nError message : ${err.message}\nStack: ${err.stack}`
         );
         reject(err);
       }
@@ -176,7 +169,7 @@ class ProxySysAdmin {
     desc: string
   ) {
     logger.info(
-      `Inteli reverse-proxy sysadmin disconnected, reason : ${code} - ${desc}`
+      `Inteli reverse-proxy sysadmin disconnected, reason : [${code} - ${desc}]`
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();

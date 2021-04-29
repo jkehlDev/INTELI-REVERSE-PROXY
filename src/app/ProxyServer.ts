@@ -213,7 +213,7 @@ class ProxyServer {
    */
   private async wsServerRequestHandler(_this: ProxyServer, request: Request) {
     logger.info(
-      `New websocket client try to connect to Inteli reverse-proxy websocket server from : ${request.origin}`
+      `New websocket client try to connect to Inteli reverse-proxy websocket server from : [${request.origin}]`
     );
     let inteliSHA256: InteliAgentSHA256;
     try {
@@ -227,14 +227,14 @@ class ProxyServer {
       ) {
         request.reject(401); // Reject unauthaurized client
         logger.warn(
-          `New websocket client connection REJECTED from ${request.origin}.\nAuthorization : <${request.httpRequest.headers.authorization}>`
+          `New websocket client connection REJECTED from [${request.origin}].\nAuthorization : <${request.httpRequest.headers.authorization}>`
         );
         return;
       }
     } catch (err) {
       request.reject(401); // Reject client if an error append
       logger.warn(
-        `New websocket client connection REJECTED from ${request.origin}.\nAuthorization : <${request.httpRequest.headers.authorization}>`
+        `New websocket client connection REJECTED from [${request.origin}].\nAuthorization : <${request.httpRequest.headers.authorization}>`
       );
       return;
     }
@@ -243,7 +243,7 @@ class ProxyServer {
       request.origin
     ); // Accept client connection and obtain connection object
     logger.info(
-      `New websocket client connection ACCEPTED from ${request.origin}. From agentId: [${inteliSHA256.agentId}]`
+      `New websocket client connection ACCEPTED from [${request.origin}]. From agentId: [${inteliSHA256.agentId}]`
     );
     _this.wsClientIndexMap.set(connection, inteliSHA256.agentId);
     // <=== Handling client connection events
@@ -278,7 +278,7 @@ class ProxyServer {
           switch (resolveState) {
             case ResolveStates.INVALID:
               logger.warn(
-                `Invalid websocket client message recieved: <${data}>. From hostId:  ${hostId}`
+                `Invalid websocket client message recieved: <${data}>. From hostId: [${hostId}]`
               );
               connection.close(
                 Connection.CLOSE_REASON_PROTOCOL_ERROR,
@@ -287,7 +287,7 @@ class ProxyServer {
               break;
             case ResolveStates.UNAUTHORIZED:
               logger.warn(
-                `Unhautorized websocket client detected : : <${data}>. From hostId: [${hostId}]`
+                `Unhautorized websocket client detected : <${data}>. From hostId: [${hostId}]`
               );
               connection.close(
                 Connection.CLOSE_REASON_POLICY_VIOLATION,
