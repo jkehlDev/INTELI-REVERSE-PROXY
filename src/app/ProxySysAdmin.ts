@@ -15,6 +15,9 @@ import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
 import SysAdminEvent from 'app/inteliProtocol/sysAdminEvent/SysAdminEvent';
 import inteliConfig from 'inteliProxyConfig.json';
 import getLogger from 'app/tools/logger';
+import ResolveStates from './tools/ResolveStates';
+import TargetCert from './inteliProtocol/sysAdminEvent/TargetCert';
+import TypeEnum from './inteliProtocol/enums/EventTypes';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySysAdmin');
@@ -45,6 +48,7 @@ class ProxySysAdmin {
    */
   constructor(origin: string) {
     try {
+      this.origin = origin;
       this.inteliAgentSHA256 = InteliSHA256Factory.makeInteliAgentSHA256(
         'sysadmin'
       );
@@ -134,11 +138,12 @@ class ProxySysAdmin {
             logger.info(
               `Inteli reverse-proxy sysadmin stop in progress (1 steps) ...`
             );
-            this.connection.close();
+            if (this.connection.connected) {
+              this.connection.close();
+            }
             logger.info(
               `Inteli reverse-proxy sysadmin stop (1/1) : websocket client stop`
             );
-
             this.state = ServerStates.CLOSE;
             resolve();
           }, inteliConfig.sysadmin.closeTimeout);
@@ -160,7 +165,7 @@ class ProxySysAdmin {
   }
 
   /**
-   * @method ProxySysAdmin#wsClientCloseHandler That will occured if connection close by server
+   * @method ProxySysAdmin#wsClientCloseHandler That will occured if connection close
    * @param _this Class instance context
    * @param code Close reason code send by server
    * @param desc Close description reason send by server
@@ -202,53 +207,101 @@ class ProxySysAdmin {
    * @param err Error send by server
    */
   private wsClientErrorHandler(_this: ProxySysAdmin, err: Error) {
-    logger.error(
-      `Inteli reverse-proxy sysadmin event - An error occured when attempted to stop web server
-        Error message : ${err.message}
-        Stack: ${err.stack}`
-    );
+    logger.error(err);
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
     }
   }
 
   public send(
-    action: ActionEnum.add | ActionEnum.remove,
-    hostId: string,
-    publicKeyFilePath: string = undefined
-  ): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    type: Exclude<string, TypeEnum>,
+    action: string,
+    payload: any
+  ): Promise<ResolveStates> {
+    return new Promise((resolve, reject) => {
       try {
         if (this.state === ServerStates.OPEN) {
-          let publicKey: string = '';
-          if (publicKeyFilePath && fs.existsSync(publicKeyFilePath)) {
-            publicKey = fs.readFileSync(publicKeyFilePath, 'utf8');
-          }
-          const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
-            action,
-            this.inteliAgentSHA256,
-            hostId,
-            publicKey
-          );
-          const sendPayload: string = JSON.stringify(sysAdminEvent);
-          logger.info(
-            `Sending event to Inteli reverse-proxy server : ${sendPayload}`
+          const sendPayload: string = JSON.stringify(
+            InteliEventFactory.makeInteliEvent(
+              type,
+              action,
+              this.inteliAgentSHA256,
+              payload
+            )
           );
           this.connection.send(sendPayload, (err) => {
             if (err) {
               reject(err);
             } else {
-              resolve();
+              resolve(ResolveStates.VALID);
             }
           });
         } else {
-          logger.warn(
-            `Can't send event to Inteli reverse-proxy server, sysadmin client not connected or in pendding state`
-          );
-          reject('ERROR_CLIENT_STATE');
+          resolve(ResolveStates.UNVAILABLE);
         }
       } catch (err) {
-        logger.error(err);
+        reject(err);
+      }
+    });
+  }
+
+  public addPublicKey(
+    hostId: string,
+    publicKeyFilePath: string
+  ): Promise<ResolveStates> {
+    return new Promise((resolve, reject) => {
+      try {
+        if (this.state === ServerStates.OPEN) {
+          let publicKey: string = '';
+          if (fs.existsSync(publicKeyFilePath)) {
+            publicKey = fs.readFileSync(publicKeyFilePath, 'utf8');
+          } else {
+            resolve(ResolveStates.INVALID);
+          }
+          const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
+            ActionEnum.add,
+            this.inteliAgentSHA256,
+            { hostId, publicKey }
+          );
+          const sendPayload: string = JSON.stringify(sysAdminEvent);
+          this.connection.send(sendPayload, (err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(ResolveStates.VALID);
+            }
+          });
+        } else {
+          resolve(ResolveStates.UNVAILABLE);
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  public removePublicKey(hostId: string): Promise<ResolveStates> {
+    return new Promise((resolve, reject) => {
+      try {
+        if (this.state === ServerStates.OPEN) {
+          const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
+            ActionEnum.remove,
+            this.inteliAgentSHA256,
+            { hostId }
+          );
+          const sendPayload: string = JSON.stringify(sysAdminEvent);
+          this.connection.send(sendPayload, (err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(ResolveStates.VALID);
+            }
+          });
+        } else {
+          resolve(ResolveStates.UNVAILABLE);
+        }
+      } catch (err) {
+        reject(err);
       }
     });
   }

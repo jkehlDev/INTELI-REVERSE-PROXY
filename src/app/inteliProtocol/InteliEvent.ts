@@ -2,8 +2,8 @@ import ActionEnum from 'app/inteliProtocol/enums/EventActions';
 import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
 
 interface InteliEvent<
-  Type extends TypeEnum,
-  Action extends ActionEnum,
+  Type extends TypeEnum | string,
+  Action extends ActionEnum | string,
   Auth,
   Payload
 > {

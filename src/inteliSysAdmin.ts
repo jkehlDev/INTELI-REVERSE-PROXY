@@ -41,7 +41,7 @@ Yargs(process.argv.slice(2))
       proxySysAdmin
         .start()
         .then(() => {
-          proxySysAdmin.send(ActionEnum.add, id, file);
+          proxySysAdmin.addPublicKey(id, file);
         })
         .catch((err) => {
           logger.error(`Cannot send adding request to proxy server`);
@@ -83,7 +83,7 @@ Yargs(process.argv.slice(2))
       proxySysAdmin
         .start()
         .then(() => {
-          proxySysAdmin.send(ActionEnum.remove, id);
+          proxySysAdmin.removePublicKey(id);
         })
         .catch((err) => {
           logger.error(`Cannot send remove request to proxy server`);

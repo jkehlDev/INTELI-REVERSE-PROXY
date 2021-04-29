@@ -17,8 +17,8 @@ import InteliAgentSHA256, {
 import getLogger from 'app/tools/logger';
 import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
-  ResolveState,
 } from './tools/ProxyMsgHandler';
+import ResolveStates from './tools/ResolveStates';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -65,16 +65,11 @@ class ProxyServer {
       this.wsServer.on('request', (request: Request) => {
         this.wsServerRequestHandler(this, request);
       });
-      this.wsServer.on(
-        'close',
-        (connection: Connection, reason: number, desc: string) => {
-          this.wsServerCloseHandler(this, connection, reason, desc);
-        }
-      );
 
       this.wsHttpServer = http.createServer();
       this.proxyHttpServer = http.createServer(
-        async (req: http.IncomingMessage, res: http.ServerResponse) => {
+        (req: http.IncomingMessage, res: http.ServerResponse) => {
+          logger.warn('Request received');
           this.proxySelector
             .getTargetHost(req)
             .then((host) => {
@@ -173,28 +168,29 @@ class ProxyServer {
                   );
                   reject(err);
                 } else {
+                  this.proxyServer.close();
                   logger.info(
-                    `Inteli reverse-proxy server stop (1/2) : websocket server stop on port [${process.env.PROXY_WS_PORT}]`
+                    `Inteli reverse-proxy server stop (1/2) : reverse-proxy server stop on port [${process.env.PROXY_PORT}]`
                   );
-                }
-              });
-            }
-            this.wsServer.shutDown(); // Shutdown websocket server
-            if (this.wsHttpServer.listening) {
-              this.wsHttpServer.close(async (err: Error) => {
-                if (err) {
-                  logger.error(
-                    `An error occured when Inteli reverse-proxy websocket server attempted to stop.\nError message : ${err.message}\nStack: ${err.stack}`
-                  );
-                  reject(err);
-                } else {
-                  logger.info(
-                    `Inteli reverse-proxy server stop (2/2) : reverse-proxy server stop on port [${process.env.PROXY_PORT}]`
-                  );
-                  this.state = ServerStates.CLOSE;
-                  this.wsClientIndexMap = new WeakMap();
-                  await this.proxySelector.cleanHost();
-                  resolve(true);
+                  this.wsServer.shutDown(); // Shutdown websocket server
+                  if (this.wsHttpServer.listening) {
+                    this.wsHttpServer.close(async (err: Error) => {
+                      if (err) {
+                        logger.error(
+                          `An error occured when Inteli reverse-proxy websocket server attempted to stop.\nError message : ${err.message}\nStack: ${err.stack}`
+                        );
+                        reject(err);
+                      } else {
+                        logger.info(
+                          `Inteli reverse-proxy server stop (2/2) : websocket server stop on port [${process.env.PROXY_WS_PORT}]`
+                        );
+                        this.state = ServerStates.CLOSE;
+                        this.wsClientIndexMap = new WeakMap();
+                        await this.proxySelector.cleanHost();
+                        resolve(true);
+                      }
+                    });
+                  }
                 }
               });
             }
@@ -268,22 +264,6 @@ class ProxyServer {
   }
 
   /**
-   * @method ProxyServer#wsServerCloseHandler WS server close event handler
-   * @param _this Class instance context
-   * @param connection WS client connection object
-   * @param reason Client close reason code
-   * @param desc Client close reason description
-   */
-  private wsServerCloseHandler(
-    _this: ProxyServer,
-    connection: Connection,
-    reason: number,
-    desc: string
-  ) {
-    _this.wsCliCloseHandler(_this, connection, reason, desc);
-  }
-
-  /**
    * @method ProxyServer#wsCliMessageHandler WS connection message event handler
    * @param _this Class instance context
    * @param connection WS client connection object
@@ -300,7 +280,7 @@ class ProxyServer {
         .msgHandler(connection, _this.proxySelector, data)
         .then((resolveState) => {
           switch (resolveState) {
-            case ResolveState.INVALID:
+            case ResolveStates.INVALID:
               logger.warn(
                 `Invalid websocket client message recieved: <${data}>. From hostId:  ${hostId}`
               );
@@ -309,7 +289,7 @@ class ProxyServer {
                 'PROTOCOL_ERROR'
               );
               break;
-            case ResolveState.UNAUTHORIZED:
+            case ResolveStates.UNAUTHORIZED:
               logger.warn(
                 `Unhautorized websocket client detected : : <${data}>. From hostId: [${hostId}]`
               );

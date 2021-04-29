@@ -43,18 +43,13 @@ function runTest() {
       proxySysAdmin // ADD CERT PUBLIC KEY TO CERT STORE
         .start()
         .then(() =>
-          proxySysAdmin.send(ActionEnum.add, 'WEB001', 'WEB001_publicKey.pem')
+          proxySysAdmin.addPublicKey('WEB001', 'WEB001_publicKey.pem')
         )
         .then(() =>
-          proxySysAdmin.send(ActionEnum.add, 'WEB002', 'WEB002_publicKey.pem')
+          proxySysAdmin.addPublicKey('WEB002', 'WEB002_publicKey.pem')
         )
         .catch((err) => {
-          logger.error(`Cannot send adding request to proxy server`);
-        })
-        .finally(() => {
-          proxySysAdmin.stop().catch((err) => {
-            logger.error(err);
-          });
+          logger.error(err);
         });
       setTimeout(() => {
         web001 // START WEB SERVER
@@ -68,23 +63,12 @@ function runTest() {
                     logger.error(err);
                   })
                   .finally(() => {
-                    proxySysAdmin // REMOVE CERT PUBLIC KEY FROM CERT STORE
-                      .start()
-                      .then(() => {
-                        proxySysAdmin.send(ActionEnum.remove, 'WEB001');
-                      })
-                      .catch((err) => {
-                        logger.error(
-                          `Cannot send remove request to proxy server`
-                        );
-                      })
-                      .finally(() => {
-                        proxySysAdmin.stop().catch((err) => {
-                          logger.error(err);
-                        });
-                      });
+                    // REMOVE CERT PUBLIC KEY FROM CERT STORE
+                    proxySysAdmin.removePublicKey('WEB001').catch((err) => {
+                      logger.error(err);
+                    });
                   });
-              }, 5000);
+              }, 30000);
             }
           })
           .catch((err) => {
@@ -104,36 +88,25 @@ function runTest() {
                     logger.error(err);
                   })
                   .finally(() => {
-                    proxySysAdmin // REMOVE CERT PUBLIC KEY FROM CERT STORE
-                      .start()
-                      .then(() => {
-                        proxySysAdmin.send(ActionEnum.remove, 'WEB002');
-                      })
-                      .catch((err) => {
-                        logger.error(
-                          `Cannot send remove request to proxy server`
-                        );
-                      })
-                      .finally(() => {
-                        proxySysAdmin.stop().catch((err) => {
-                          logger.error(err);
-                        });
-                      });
+                    // REMOVE CERT PUBLIC KEY FROM CERT STORE
+                    proxySysAdmin.removePublicKey('WEB002').catch((err) => {
+                      logger.error(err);
+                    });
                   });
-              }, 5000);
+              },40000);
             }
           })
           .catch((err) => {
             logger.error(err);
           });
-      }, 7000);
+      }, 5000);
 
       setTimeout(() => {
         proxyServer.stop().catch((err) => {
           // STOP PROXY
           logger.error(err);
         });
-      }, 30000);
+      }, 120000);
     }
   });
 }

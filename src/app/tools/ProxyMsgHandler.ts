@@ -11,16 +11,11 @@ import { connection as Connection, IMessage } from 'websocket';
 import ProxySelector from './ProxySelector';
 
 import getLogger from 'app/tools/logger';
+import ResolveStates from './ResolveStates';
 
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyMsgHandler');
-
-export enum ResolveState {
-  VALID,
-  INVALID,
-  UNAUTHORIZED,
-}
 
 export default abstract class ProxyMsgHandler {
   /**
@@ -34,7 +29,7 @@ export default abstract class ProxyMsgHandler {
     connection: Connection,
     proxySelector: ProxySelector,
     data: IMessage
-  ): Promise<ResolveState> {
+  ): Promise<ResolveStates> {
     return new Promise((resolve, reject) => {
       try {
         if ((data.type = EventEncode.utf8)) {
@@ -59,17 +54,17 @@ export default abstract class ProxyMsgHandler {
                 );
             }
           } else {
-            resolve(ResolveState.UNAUTHORIZED);
+            resolve(ResolveStates.UNAUTHORIZED);
           }
         } else {
-          resolve(ResolveState.INVALID);
+          resolve(ResolveStates.INVALID);
         }
       } catch (err) {
         reject(err);
       }
     });
   }
-  private resolveSysAdminMsg(event: SysAdminEvent): Promise<ResolveState> {
+  private resolveSysAdminMsg(event: SysAdminEvent): Promise<ResolveStates> {
     return new Promise((resolve, reject) => {
       try {
         switch (event.header.action) {
@@ -83,7 +78,7 @@ export default abstract class ProxyMsgHandler {
               }_publicKey.pem`,
               event.payload.publicKey
             );
-            resolve(ResolveState.VALID);
+            resolve(ResolveStates.VALID);
             break;
           case ActionEnum.remove:
             logger.info(
@@ -92,10 +87,10 @@ export default abstract class ProxyMsgHandler {
             fs.rmSync(
               `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`
             );
-            resolve(ResolveState.VALID);
+            resolve(ResolveStates.VALID);
             break;
           default:
-            resolve(ResolveState.INVALID);
+            resolve(ResolveStates.INVALID);
             break;
         }
       } catch (err) {
@@ -107,7 +102,7 @@ export default abstract class ProxyMsgHandler {
     connection: Connection,
     proxySelector: ProxySelector,
     event: WebServerEvent
-  ): Promise<ResolveState> {
+  ): Promise<ResolveStates> {
     return new Promise((resolve, reject) => {
       try {
         switch (event.header.action) {
@@ -115,7 +110,7 @@ export default abstract class ProxyMsgHandler {
             proxySelector
               .addHost(connection, event.payload)
               .then(() => {
-                resolve(ResolveState.VALID);
+                resolve(ResolveStates.VALID);
               })
               .catch((err) => {
                 reject(err);
@@ -123,10 +118,10 @@ export default abstract class ProxyMsgHandler {
             break;
           case ActionEnum.close:
             connection.close(Connection.CLOSE_REASON_NORMAL, `NORMAL CLOSE`);
-            resolve(ResolveState.VALID);
+            resolve(ResolveStates.VALID);
             break;
           default:
-            resolve(ResolveState.INVALID);
+            resolve(ResolveStates.INVALID);
             break;
         }
       } catch (err) {
@@ -138,16 +133,16 @@ export default abstract class ProxyMsgHandler {
     connection: Connection,
     proxySelector: ProxySelector,
     event: InteliEvent<TypeEnum, ActionEnum, any, any>
-  ): Promise<ResolveState>;
+  ): Promise<ResolveStates>;
 }
 export class DefaultProxyMsgHandler extends ProxyMsgHandler {
   resolvePersonalizedMsg(
     connection: Connection,
     proxySelector: ProxySelector,
     event: InteliEvent<TypeEnum, ActionEnum, any, any>
-  ): Promise<ResolveState> {
+  ): Promise<ResolveStates> {
     return new Promise((resolve, rejects) => {
-      resolve(ResolveState.INVALID);
+      resolve(ResolveStates.INVALID);
     });
   }
 }

@@ -24,10 +24,15 @@ function compareint(num1: number, num2: number): number {
 }
 
 function getBestMatchRule(path: string, hosts: Host[]): string {
-  return hosts
+  const sorted = hosts
     .map((host) => host.rule)
     .filter((rule) => ruleMatch(rule, path))
-    .sort((rule1, rule2) => -compareint(rule1.length, rule2.length))[0];
+    .sort((rule1, rule2) => -compareint(rule1.length, rule2.length));
+  if (sorted.length > 0) {
+    return sorted[0];
+  } else {
+    return undefined;
+  }
 }
 
 export default abstract class ProxySelector {
@@ -51,20 +56,28 @@ export class DefaultProxySelector extends ProxySelector {
           .filter((con) => this.hostsMap.has(con))
           .map((con) => this.hostsMap.get(con));
         const bestRule = getBestMatchRule(req.url, hosts);
-        let host: Host;
-        do {
-          while (!this.hostsMap.has(connection) && this.hostsQueue.length > 0) {
-            connection = this.hostsQueue.shift();
-            counter--;
+        if (bestRule) {
+          let host: Host;
+          do {
+            while (!this.hostsMap.has(connection) && counter > 0) {
+              connection = this.hostsQueue.shift();
+              counter--;
+            }
+            if (this.hostsMap.has(connection)) {
+              this.hostsQueue.push(connection);
+              host = this.hostsMap.get(connection);
+              isMatch = bestRule === host.rule;
+            }
+          } while (counter > 0 && !isMatch);
+
+          if (this.hostsMap.has(connection) && isMatch) {
+            resolve(host);
+          } else {
+            logger.warn(
+              `Can't resolve target web server for web client request, no host registred match`
+            );
+            resolve(null);
           }
-          if (this.hostsMap.has(connection)) {
-            this.hostsQueue.push(connection);
-            host = this.hostsMap.get(connection);
-            isMatch = bestRule === host.rule;
-          }
-        } while (counter > 0 && !isMatch);
-        if (this.hostsMap.has(connection) && isMatch) {
-          resolve(host);
         } else {
           logger.warn(
             `Can't resolve target web server for web client request, no host registred match`

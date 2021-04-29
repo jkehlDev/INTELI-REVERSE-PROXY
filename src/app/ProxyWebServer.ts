@@ -15,6 +15,9 @@ import InteliAgentSHA256, {
   InteliSHA256Factory,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from 'app/tools/logger';
+import ResolveStates from './tools/ResolveStates';
+import InteliEvent from './inteliProtocol/InteliEvent';
+import TypeEnum from './inteliProtocol/enums/EventTypes';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyWebServer');
@@ -167,9 +170,7 @@ class ProxyWebServer {
           resolve(false);
         }
       } catch (err) {
-        logger.error(
-          `An error occured when proxy web server attempt to start [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
-        );
+        logger.error(`[${this.inteliAgentSHA256.agentId}] Error\n${err}`);
         reject(err);
       }
     });
@@ -187,8 +188,25 @@ class ProxyWebServer {
           logger.info(
             `Inteli reverse-proxy web server stop in progress (2 steps) [${this.inteliAgentSHA256.agentId}] ...`
           );
+          if (this.connection.connected) {
+            const closeProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
+              ActionEnum.close,
+              this.inteliAgentSHA256,
+              inteliConfig.webserver.version,
+              this.host,
+              this.port,
+              this.rule
+            );
+            this.connection.send(JSON.stringify(closeProxyEvent), (err) => {
+              if (err) {
+                reject(err);
+              }
+            });
+          }
           setTimeout(() => {
-            this.connection.close();
+            if (this.connection.connected) {
+              this.connection.close();
+            }
             logger.info(
               `Inteli reverse-proxy web server stop (1/2) [${this.inteliAgentSHA256.agentId}]: websocket client stop`
             );
@@ -218,9 +236,7 @@ class ProxyWebServer {
           resolve(false);
         }
       } catch (err) {
-        logger.error(
-          `An error occured when proxy web server attempt to stop [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
-        );
+        logger.error(`[${this.inteliAgentSHA256.agentId}] Error\n${err}`);
         reject(err);
       }
     });
@@ -238,7 +254,7 @@ class ProxyWebServer {
     desc: string
   ) {
     logger.info(
-      `Inteli reverse-proxy webSocket client disconnected [${_this.inteliAgentSHA256.agentId}], reason : ${code} - ${desc}`
+      `Client disconnected [${_this.inteliAgentSHA256.agentId}], reason : ${code} - ${desc}`
     );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
@@ -251,12 +267,42 @@ class ProxyWebServer {
    * @param err Error send by server
    */
   private wsClientErrorHandler(_this: ProxyWebServer, err: Error) {
-    logger.error(
-      `An error occured on websocket client [${_this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
-    );
+    logger.error(`[${this.inteliAgentSHA256.agentId}] Error\n${err}`);
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
     }
+  }
+
+  public send(
+    type: Exclude<string, TypeEnum>,
+    action: string,
+    payload: any
+  ): Promise<ResolveStates> {
+    return new Promise((resolve, reject) => {
+      try {
+        if (this.state === ServerStates.OPEN) {
+          const sendPayload: string = JSON.stringify(
+            InteliEventFactory.makeInteliEvent(
+              type,
+              action,
+              this.inteliAgentSHA256,
+              payload
+            )
+          );
+          this.connection.send(sendPayload, (err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(ResolveStates.VALID);
+            }
+          });
+        } else {
+          resolve(ResolveStates.UNVAILABLE);
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 }
 
