@@ -2,7 +2,6 @@
 import http from 'http';
 import https from 'https';
 import httpProxy from 'http-proxy';
-import fs from 'fs';
 import {
   connection as Connection,
   IMessage,
@@ -11,18 +10,15 @@ import {
 } from 'websocket';
 import inteliConfig from 'inteliProxyConfig.json';
 import ProxySelector, { DefaultProxySelector } from './tools/ProxySelector';
-import Host from 'app/inteliProtocol/webServerEvent/Host';
-import InteliEvent from 'app/inteliProtocol/InteliEvent';
-import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
-import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
-import TypeEnum from './inteliProtocol/enums/EventTypes';
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import EventEncode from 'app/inteliProtocol/enums/EventEncode';
 import InteliAgentSHA256, {
   getInteliSHA256FrmAuthorizationHeader,
   inteliSHA256CheckValidity,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from 'app/tools/logger';
+import ProxyMsgHandler, {
+  DefaultProxyMsgHandler,
+  ResolveState,
+} from './tools/ProxyMsgHandler';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -43,6 +39,7 @@ class ProxyServer {
 
   private originValidator: (origin: string) => Promise<boolean>; // Callback provide request ctrl before accept or reject new host connection
   private proxySelector: ProxySelector; // Instance of ProxySelector
+  private proxyMsgHandler: ProxyMsgHandler; // Instance of ProxyMsgHandler
 
   private wsServer: WsServer = new WsServer(); // Websocket server instance
   private wsHttpServer: http.Server | https.Server; // Websocket http server instance
@@ -54,13 +51,16 @@ class ProxyServer {
    * @constructor This provide instance of Inteli-proxy server
    * @param originValidator - Callback provide origin check before accept new host connection (For CORS)
    * @param proxySelector - Instance of ProxySelector (Optionnal, DefaultProxySelector instance by default)
+   * @param proxyMsgHandler - Instance of ProxyMsgHandler (Optionnal, DefaultProxySelector instance by default)
    */
   constructor(
     originValidator: (origin: string) => Promise<boolean>,
-    proxySelector: ProxySelector = new DefaultProxySelector()
+    proxySelector: ProxySelector = new DefaultProxySelector(),
+    proxyMsgHandler: ProxyMsgHandler = new DefaultProxyMsgHandler()
   ) {
     this.originValidator = async (origin) => await originValidator(origin);
     this.proxySelector = proxySelector;
+    this.proxyMsgHandler = proxyMsgHandler;
     try {
       this.wsServer.on('request', (request: Request) => {
         this.wsServerRequestHandler(this, request);
@@ -296,52 +296,41 @@ class ProxyServer {
   ) {
     const hostId: string = _this.wsClientIndexMap.get(connection);
     try {
-      if ((data.type = EventEncode.utf8)) {
-        const event: InteliEvent<TypeEnum, ActionEnum, any, any> = JSON.parse(
-          data.utf8Data
-        );
-        if (inteliSHA256CheckValidity(event.authentification)) {
-          switch (event.header.type) {
-            case TypeEnum.sysadmin:
-              this.handleTypeSysAdminEvent(
-                _this,
-                connection,
-                event as SysAdminEvent
-              );
-              break;
-            case TypeEnum.webServer:
-              this.handleTypeWebServerEvent(
-                _this,
-                connection,
-                event as WebServerEvent
-              );
-              break;
-            default:
+      this.proxyMsgHandler
+        .msgHandler(connection, _this.proxySelector, data)
+        .then((resolveState) => {
+          switch (resolveState) {
+            case ResolveState.INVALID:
               logger.warn(
-                `Invalid websocket client message type recieved: <${event.header.type}>. From hostId:  ${hostId}`
+                `Invalid websocket client message recieved: <${data}>. From hostId:  ${hostId}`
               );
               connection.close(
                 Connection.CLOSE_REASON_PROTOCOL_ERROR,
                 'PROTOCOL_ERROR'
               );
               break;
+            case ResolveState.UNAUTHORIZED:
+              logger.warn(
+                `Unhautorized websocket client detected : : <${data}>. From hostId: [${hostId}]`
+              );
+              connection.close(
+                Connection.CLOSE_REASON_POLICY_VIOLATION,
+                'UNAUTHORIZED'
+              );
+              break;
+            default:
+              break;
           }
-        } else {
-          logger.warn(
-            `Unhautorized websocket client detected : Client signature invalid. From hostId: [${hostId}]`
+        })
+        .catch((err) => {
+          logger.error(err);
+          connection.close(
+            Connection.CLOSE_REASON_INVALID_DATA,
+            'INVALID DATA'
           );
-          connection.close(Connection.CLOSE_REASON_RESERVED, 'RESERVED');
-        }
-      } else {
-        logger.warn(
-          `Invalid websocket message type recieved: <${data.type}>. From hostId: [${hostId}]`
-        );
-        connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
-      }
-    } catch (error) {
-      logger.error(
-        `Invalid websocket client message recieved : <${data}>. From hostId: [${hostId}]`
-      );
+        });
+    } catch (err) {
+      logger.error(err);
       connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
     }
   }
@@ -387,77 +376,6 @@ class ProxyServer {
       );
     }
     connection.close(Connection.CLOSE_REASON_PROTOCOL_ERROR, 'PROTOCOL_ERROR');
-  }
-
-  private handleTypeSysAdminEvent(
-    _this: ProxyServer,
-    connection: Connection,
-    event: SysAdminEvent
-  ) {
-    switch (event.header.action) {
-      case ActionEnum.add:
-        logger.info(
-          `Sysadmin add public certificat to certstore event received for agentID:[${event.payload.hostId}].`
-        );
-        fs.writeFile(
-          `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`,
-          event.payload.publicKey,
-          (err) => {
-            if (err) throw err;
-          }
-        );
-        break;
-      case ActionEnum.remove:
-        logger.info(
-          `Sysadmin remove public certificat from certstore event received for agentID:[${event.payload.hostId}].`
-        );
-        fs.rm(
-          `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`,
-          (err) => {
-            if (err) throw err;
-          }
-        );
-        break;
-      default:
-        if (_this.wsClientIndexMap.has(connection)) {
-          const hostId: string = _this.wsClientIndexMap.get(connection);
-          logger.warn(
-            `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
-          );
-        }
-        connection.close(
-          Connection.CLOSE_REASON_PROTOCOL_ERROR,
-          'PROTOCOL_ERROR'
-        );
-        break;
-    }
-  }
-
-  private async handleTypeWebServerEvent(
-    _this: ProxyServer,
-    connection: Connection,
-    event: WebServerEvent
-  ) {
-    switch (event.header.action) {
-      case ActionEnum.open:
-        await _this.proxySelector.addHost(connection, event.payload);
-        break;
-      case ActionEnum.close:
-        connection.close(Connection.CLOSE_REASON_NORMAL, `NORMAL CLOSE`);
-        break;
-      default:
-        if (_this.wsClientIndexMap.has(connection)) {
-          const hostId: string = _this.wsClientIndexMap.get(connection);
-          logger.warn(
-            `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
-          );
-        }
-        connection.close(
-          Connection.CLOSE_REASON_PROTOCOL_ERROR,
-          'PROTOCOL_ERROR'
-        );
-        break;
-    }
   }
 }
 
