@@ -1,9 +1,9 @@
-import inteliProxy from 'inteliProxy';
+// <== Imports externals modules
 import fs from 'fs';
-import { InteliSHA256Factory } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import http from 'http';
-import getLogger from 'app/tools/logger';
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
+import inteliProxy from '../inteliProxy';
+import { InteliAgentSHA256Tools } from '../app/inteliProtocol/Authentification/InteliAgentSHA256';
+import getLogger from '../app/tools/logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('proxyRunTest');
@@ -113,7 +113,7 @@ function runTest() {
 
 try {
   if (!fs.existsSync(`${process.cwd()}/WEB001_privateKey.pem`)) {
-    InteliSHA256Factory.genKeys('WEB001').then(() => runTest());
+    InteliAgentSHA256Tools.genKeys('WEB001').then(() => runTest());
   } else {
     runTest();
   }

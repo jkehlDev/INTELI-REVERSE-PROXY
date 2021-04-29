@@ -1,5 +1,5 @@
-enum TypeEnum {
+enum TypesEnum {
   webServer = 'webServer',
   sysadmin = 'sysadmin',
 }
-export default TypeEnum;
+export default TypesEnum;

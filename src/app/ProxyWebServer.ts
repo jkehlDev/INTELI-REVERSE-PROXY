@@ -1,22 +1,22 @@
 // <== Imports externals modules
+import http from 'http';
+import https from 'https';
 import {
   connection as Connection,
   client as WsClient,
   IMessage,
 } from 'websocket';
-import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
-import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import http from 'http';
-import https from 'https';
-import EventEncode from 'app/inteliProtocol/enums/EventEncode';
-import inteliConfig from 'inteliProxyConfig.json';
+import inteliConfig from '../inteliProxyConfig.json';
+import ActionsEnum from './inteliProtocol/enums/ActionsEnum';
+import EncodesEnum from './inteliProtocol/enums/EncodesEnum';
+import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
+import TypesEnum from './inteliProtocol/enums/TypesEnum';
+import WebServerEvent from './inteliProtocol/webServerEvent/WebServerEvent';
+import InteliEventFactory from './inteliProtocol/InteliEventFactory';
 import InteliAgentSHA256, {
-  InteliSHA256Factory,
-} from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import getLogger from 'app/tools/logger';
-import ResolveStates from './tools/ResolveStates';
-import TypeEnum from './inteliProtocol/enums/EventTypes';
+  InteliAgentSHA256Tools,
+} from './inteliProtocol/Authentification/InteliAgentSHA256';
+import getLogger from './tools/logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyWebServer');
@@ -32,12 +32,12 @@ enum ServerStates {
  * @param data Message data content
  */
 function wsClientMessageHandler(data: IMessage) {
-  if (data.type === EventEncode.utf8) {
+  if (data.type === EncodesEnum.utf8) {
     logger.warn(
       `Inteli reverse-proxy webSocket client receive utf8 message : <${data.utf8Data}>`
     );
   }
-  if (data.type === EventEncode.binary) {
+  if (data.type === EncodesEnum.binary) {
     logger.warn(
       `Inteli reverse-proxy webSocket client receive binary message : <${data.utf8Data}>`
     );
@@ -85,7 +85,7 @@ class ProxyWebServer {
     this.port = port;
     this.rule = rule;
     try {
-      this.inteliAgentSHA256 = InteliSHA256Factory.makeInteliAgentSHA256(
+      this.inteliAgentSHA256 = InteliAgentSHA256Tools.makeInteliAgentSHA256(
         agentId
       );
     } catch (err) {
@@ -136,7 +136,7 @@ class ProxyWebServer {
                 `Inteli reverse-proxy web server start (2/2) [${this.inteliAgentSHA256.agentId}]: web server start on port [${this.port}]`
               );
               const openProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
-                ActionEnum.open,
+                ActionsEnum.open,
                 this.inteliAgentSHA256,
                 inteliConfig.webserver.version,
                 this.host,
@@ -189,7 +189,7 @@ class ProxyWebServer {
           );
           if (this.connection.connected) {
             const closeProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
-              ActionEnum.close,
+              ActionsEnum.close,
               this.inteliAgentSHA256,
               inteliConfig.webserver.version,
               this.host,
@@ -273,10 +273,10 @@ class ProxyWebServer {
   }
 
   public send(
-    type: Exclude<string, TypeEnum>,
+    type: Exclude<string, TypesEnum>,
     action: string,
     payload: any
-  ): Promise<ResolveStates> {
+  ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
         if (this.state === ServerStates.OPEN) {
@@ -292,11 +292,11 @@ class ProxyWebServer {
             if (err) {
               reject(err);
             } else {
-              resolve(ResolveStates.VALID);
+              resolve(ResolveStatesEnum.VALID);
             }
           });
         } else {
-          resolve(ResolveStates.UNVAILABLE);
+          resolve(ResolveStatesEnum.UNVAILABLE);
         }
       } catch (err) {
         reject(err);

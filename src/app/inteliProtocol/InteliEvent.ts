@@ -1,9 +1,10 @@
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
-
+// <== Imports externals modules
+import ActionsEnum from './enums/ActionsEnum';
+import TypesEnum from './enums/TypesEnum';
+// ==>
 interface InteliEvent<
-  Type extends TypeEnum | string,
-  Action extends ActionEnum | string,
+  Type extends TypesEnum | string,
+  Action extends ActionsEnum | string,
   Auth,
   Payload
 > {

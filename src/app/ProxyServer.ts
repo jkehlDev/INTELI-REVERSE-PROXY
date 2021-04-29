@@ -8,18 +8,18 @@ import {
   request as Request,
   server as WsServer,
 } from 'websocket';
-import inteliConfig from 'inteliProxyConfig.json';
-import ProxySelector, { DefaultProxySelector } from './tools/ProxySelector';
+import inteliConfig from '../inteliProxyConfig.json';
 import InteliAgentSHA256, {
   getInteliSHA256FrmAuthorizationHeader,
   inteliSHA256CheckValidity,
-} from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import getLogger from 'app/tools/logger';
+} from './inteliProtocol/Authentification/InteliAgentSHA256';
+import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
+import Host from './inteliProtocol/webServerEvent/Host';
+import ProxySelector, { DefaultProxySelector } from './tools/ProxySelector';
 import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
 } from './tools/ProxyMsgHandler';
-import ResolveStates from './tools/ResolveStates';
-import Host from './inteliProtocol/webServerEvent/Host';
+import getLogger from './tools/logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -276,7 +276,7 @@ class ProxyServer {
         .msgHandler(connection, _this.proxySelector, data)
         .then((resolveState) => {
           switch (resolveState) {
-            case ResolveStates.INVALID:
+            case ResolveStatesEnum.INVALID:
               logger.warn(
                 `Invalid websocket client message recieved: <${data}>. From hostId: [${hostId}]`
               );
@@ -285,7 +285,7 @@ class ProxyServer {
                 'PROTOCOL_ERROR'
               );
               break;
-            case ResolveStates.UNAUTHORIZED:
+            case ResolveStatesEnum.UNAUTHORIZED:
               logger.warn(
                 `Unhautorized websocket client detected : <${data}>. From hostId: [${hostId}]`
               );

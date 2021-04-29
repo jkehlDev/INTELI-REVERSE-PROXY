@@ -1,8 +1,8 @@
+// <== Imports externals modules
 import http from 'http';
-import Host from 'app/inteliProtocol/webServerEvent/Host';
-import getLogger from 'app/tools/logger';
 import { connection as Connection } from 'websocket';
-
+import Host from '../inteliProtocol/webServerEvent/Host';
+import getLogger from './logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySelector');

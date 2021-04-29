@@ -1,13 +1,14 @@
-import InteliEvent from 'app/inteliProtocol/InteliEvent';
-import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import InteliAgentSHA256 from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import Host from 'app/inteliProtocol/webServerEvent/Host';
-
+// <== Imports externals modules
+import InteliEvent from '../InteliEvent';
+import TypesEnum from '../enums/TypesEnum';
+import ActionsEnum from '../enums/ActionsEnum';
+import InteliAgentSHA256 from '../Authentification/InteliAgentSHA256';
+import Host from './Host';
+// ==>
 interface WebServerEvent
   extends InteliEvent<
-    TypeEnum.webServer,
-    ActionEnum.open | ActionEnum.close,
+    TypesEnum.webServer,
+    ActionsEnum.open | ActionsEnum.close,
     InteliAgentSHA256,
     Host
   > {}

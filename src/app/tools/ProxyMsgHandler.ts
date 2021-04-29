@@ -1,18 +1,16 @@
 // <== Imports externals modules
-import { inteliSHA256CheckValidity } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import EventEncode from 'app/inteliProtocol/enums/EventEncode';
-import TypeEnum from 'app/inteliProtocol/enums/EventTypes';
-import InteliEvent from 'app/inteliProtocol/InteliEvent';
-import SysAdminEvent from 'app/inteliProtocol/sysAdminEvent/SysAdminEvent';
-import WebServerEvent from 'app/inteliProtocol/webServerEvent/WebServerEvent';
 import fs from 'fs';
 import { connection as Connection, IMessage } from 'websocket';
+import { inteliSHA256CheckValidity } from '../inteliProtocol/Authentification/InteliAgentSHA256';
+import ResolveStatesEnum from '../inteliProtocol/enums/ResolveStatesEnum';
+import ActionsEnum from '../inteliProtocol/enums/ActionsEnum';
+import EncodesEnum from '../inteliProtocol/enums/EncodesEnum';
+import TypesEnum from '../inteliProtocol/enums/TypesEnum';
+import InteliEvent from '../inteliProtocol/InteliEvent';
+import SysAdminEvent from '../inteliProtocol/sysAdminEvent/SysAdminEvent';
+import WebServerEvent from '../inteliProtocol/webServerEvent/WebServerEvent';
 import ProxySelector from './ProxySelector';
-
-import getLogger from 'app/tools/logger';
-import ResolveStates from './ResolveStates';
-
+import getLogger from './logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyMsgHandler');
@@ -29,18 +27,21 @@ export default abstract class ProxyMsgHandler {
     connection: Connection,
     proxySelector: ProxySelector,
     data: IMessage
-  ): Promise<ResolveStates> {
+  ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
-        if ((data.type = EventEncode.utf8)) {
-          const event: InteliEvent<TypeEnum, ActionEnum, any, any> = JSON.parse(
-            data.utf8Data
-          );
+        if ((data.type = EncodesEnum.utf8)) {
+          const event: InteliEvent<
+            TypesEnum,
+            ActionsEnum,
+            any,
+            any
+          > = JSON.parse(data.utf8Data);
           if (inteliSHA256CheckValidity(event.authentification)) {
             switch (event.header.type) {
-              case TypeEnum.sysadmin:
+              case TypesEnum.sysadmin:
                 return this.resolveSysAdminMsg(event as SysAdminEvent);
-              case TypeEnum.webServer:
+              case TypesEnum.webServer:
                 return this.resolveWebServerMsg(
                   connection,
                   proxySelector,
@@ -54,21 +55,21 @@ export default abstract class ProxyMsgHandler {
                 );
             }
           } else {
-            resolve(ResolveStates.UNAUTHORIZED);
+            resolve(ResolveStatesEnum.UNAUTHORIZED);
           }
         } else {
-          resolve(ResolveStates.INVALID);
+          resolve(ResolveStatesEnum.INVALID);
         }
       } catch (err) {
         reject(err);
       }
     });
   }
-  private resolveSysAdminMsg(event: SysAdminEvent): Promise<ResolveStates> {
+  private resolveSysAdminMsg(event: SysAdminEvent): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
         switch (event.header.action) {
-          case ActionEnum.add:
+          case ActionsEnum.add:
             logger.info(
               `Sysadmin add public certificat to certstore event received for agentID:[${event.payload.hostId}].`
             );
@@ -78,19 +79,19 @@ export default abstract class ProxyMsgHandler {
               }_publicKey.pem`,
               event.payload.publicKey
             );
-            resolve(ResolveStates.VALID);
+            resolve(ResolveStatesEnum.VALID);
             break;
-          case ActionEnum.remove:
+          case ActionsEnum.remove:
             logger.info(
               `Sysadmin remove public certificat from certstore event received for agentID:[${event.payload.hostId}].`
             );
             fs.rmSync(
               `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`
             );
-            resolve(ResolveStates.VALID);
+            resolve(ResolveStatesEnum.VALID);
             break;
           default:
-            resolve(ResolveStates.INVALID);
+            resolve(ResolveStatesEnum.INVALID);
             break;
         }
       } catch (err) {
@@ -102,26 +103,26 @@ export default abstract class ProxyMsgHandler {
     connection: Connection,
     proxySelector: ProxySelector,
     event: WebServerEvent
-  ): Promise<ResolveStates> {
+  ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
         switch (event.header.action) {
-          case ActionEnum.open:
+          case ActionsEnum.open:
             proxySelector
               .addHost(connection, event.payload)
               .then(() => {
-                resolve(ResolveStates.VALID);
+                resolve(ResolveStatesEnum.VALID);
               })
               .catch((err) => {
                 reject(err);
               });
             break;
-          case ActionEnum.close:
+          case ActionsEnum.close:
             connection.close(Connection.CLOSE_REASON_NORMAL, `NORMAL CLOSE`);
-            resolve(ResolveStates.VALID);
+            resolve(ResolveStatesEnum.VALID);
             break;
           default:
-            resolve(ResolveStates.INVALID);
+            resolve(ResolveStatesEnum.INVALID);
             break;
         }
       } catch (err) {
@@ -132,17 +133,17 @@ export default abstract class ProxyMsgHandler {
   abstract resolvePersonalizedMsg(
     connection: Connection,
     proxySelector: ProxySelector,
-    event: InteliEvent<TypeEnum, ActionEnum, any, any>
-  ): Promise<ResolveStates>;
+    event: InteliEvent<TypesEnum, ActionsEnum, any, any>
+  ): Promise<ResolveStatesEnum>;
 }
 export class DefaultProxyMsgHandler extends ProxyMsgHandler {
   resolvePersonalizedMsg(
     connection: Connection,
     proxySelector: ProxySelector,
-    event: InteliEvent<TypeEnum, ActionEnum, any, any>
-  ): Promise<ResolveStates> {
+    event: InteliEvent<TypesEnum, ActionsEnum, any, any>
+  ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, rejects) => {
-      resolve(ResolveStates.INVALID);
+      resolve(ResolveStatesEnum.INVALID);
     });
   }
 }

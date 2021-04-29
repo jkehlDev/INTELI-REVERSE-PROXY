@@ -1,23 +1,22 @@
 // <== Imports externals modules
-import InteliAgentSHA256, {
-  InteliSHA256Factory,
-} from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
-import EventEncode from 'app/inteliProtocol/enums/EventEncode';
 import http from 'http';
+import fs from 'fs';
 import {
   client as WsClient,
   connection as Connection,
   IMessage,
 } from 'websocket';
-import fs from 'fs';
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import InteliEventFactory from 'app/inteliProtocol/InteliEventFactory';
-import SysAdminEvent from 'app/inteliProtocol/sysAdminEvent/SysAdminEvent';
-import inteliConfig from 'inteliProxyConfig.json';
-import getLogger from 'app/tools/logger';
-import ResolveStates from './tools/ResolveStates';
-import TargetCert from './inteliProtocol/sysAdminEvent/TargetCert';
-import TypeEnum from './inteliProtocol/enums/EventTypes';
+import inteliConfig from '../inteliProxyConfig.json';
+import InteliAgentSHA256, {
+  InteliAgentSHA256Tools,
+} from './inteliProtocol/Authentification/InteliAgentSHA256';
+import EncodesEnum from './inteliProtocol/enums/EncodesEnum';
+import ActionsEnum from './inteliProtocol/enums/ActionsEnum';
+import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
+import TypesEnum from './inteliProtocol/enums/TypesEnum';
+import InteliEventFactory from './inteliProtocol/InteliEventFactory';
+import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
+import getLogger from './tools/logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySysAdmin');
@@ -49,7 +48,7 @@ class ProxySysAdmin {
   constructor(origin: string) {
     try {
       this.origin = origin;
-      this.inteliAgentSHA256 = InteliSHA256Factory.makeInteliAgentSHA256(
+      this.inteliAgentSHA256 = InteliAgentSHA256Tools.makeInteliAgentSHA256(
         'sysadmin'
       );
     } catch (err) {
@@ -182,12 +181,12 @@ class ProxySysAdmin {
    * @param data Message data content
    */
   private wsClientMessageHandler(_this: ProxySysAdmin, data: IMessage) {
-    if (data.type === EventEncode.utf8) {
+    if (data.type === EncodesEnum.utf8) {
       logger.warn(
         `Inteli reverse-proxy sysadmin receive utf8 message : <${data.utf8Data}>`
       );
     }
-    if (data.type === EventEncode.binary) {
+    if (data.type === EncodesEnum.binary) {
       logger.warn(
         `Inteli reverse-proxy sysadmin receive binary message : <${data.utf8Data}>`
       );
@@ -207,10 +206,10 @@ class ProxySysAdmin {
   }
 
   public send(
-    type: Exclude<string, TypeEnum>,
+    type: Exclude<string, TypesEnum>,
     action: string,
     payload: any
-  ): Promise<ResolveStates> {
+  ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
         if (this.state === ServerStates.OPEN) {
@@ -226,11 +225,11 @@ class ProxySysAdmin {
             if (err) {
               reject(err);
             } else {
-              resolve(ResolveStates.VALID);
+              resolve(ResolveStatesEnum.VALID);
             }
           });
         } else {
-          resolve(ResolveStates.UNVAILABLE);
+          resolve(ResolveStatesEnum.UNVAILABLE);
         }
       } catch (err) {
         reject(err);
@@ -241,7 +240,7 @@ class ProxySysAdmin {
   public addPublicKey(
     hostId: string,
     publicKeyFilePath: string
-  ): Promise<ResolveStates> {
+  ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
         if (this.state === ServerStates.OPEN) {
@@ -249,10 +248,10 @@ class ProxySysAdmin {
           if (fs.existsSync(publicKeyFilePath)) {
             publicKey = fs.readFileSync(publicKeyFilePath, 'utf8');
           } else {
-            resolve(ResolveStates.INVALID);
+            resolve(ResolveStatesEnum.INVALID);
           }
           const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
-            ActionEnum.add,
+            ActionsEnum.add,
             this.inteliAgentSHA256,
             { hostId, publicKey }
           );
@@ -261,11 +260,11 @@ class ProxySysAdmin {
             if (err) {
               reject(err);
             } else {
-              resolve(ResolveStates.VALID);
+              resolve(ResolveStatesEnum.VALID);
             }
           });
         } else {
-          resolve(ResolveStates.UNVAILABLE);
+          resolve(ResolveStatesEnum.UNVAILABLE);
         }
       } catch (err) {
         reject(err);
@@ -273,12 +272,12 @@ class ProxySysAdmin {
     });
   }
 
-  public removePublicKey(hostId: string): Promise<ResolveStates> {
+  public removePublicKey(hostId: string): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
         if (this.state === ServerStates.OPEN) {
           const sysAdminEvent: SysAdminEvent = InteliEventFactory.makeSysAdminEvent(
-            ActionEnum.remove,
+            ActionsEnum.remove,
             this.inteliAgentSHA256,
             { hostId }
           );
@@ -287,11 +286,11 @@ class ProxySysAdmin {
             if (err) {
               reject(err);
             } else {
-              resolve(ResolveStates.VALID);
+              resolve(ResolveStatesEnum.VALID);
             }
           });
         } else {
-          resolve(ResolveStates.UNVAILABLE);
+          resolve(ResolveStatesEnum.UNVAILABLE);
         }
       } catch (err) {
         reject(err);

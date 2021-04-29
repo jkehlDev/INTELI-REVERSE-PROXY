@@ -1,11 +1,16 @@
-import ActionEnum from 'app/inteliProtocol/enums/EventActions';
-import ProxySysAdmin from 'app/ProxySysAdmin';
-import getLogger from 'app/tools/logger';
+// <== Imports externals modules
+import Yargs from 'yargs';
+import ProxySysAdmin from './app/ProxySysAdmin';
+import getLogger from './app/tools/logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('InteliSysAdmin');
 
-import Yargs from 'yargs';
+/**
+ * @module inteliSysAdmin Provide a proxy sysadmin console commande line 
+ * @version 1.0.0
+ * @description Execute module with node and get command help
+ */
 
 Yargs(process.argv.slice(2))
   .usage('Usage: $0 <command> [options]')

@@ -1,4 +1,6 @@
-import getLogger from 'app/tools/logger';
+// <== Imports externals modules
+import dotenv from 'dotenv';
+import getLogger from './app/tools/logger';
 // LOGGER INSTANCE
 const logger = getLogger('InteliProxy');
 
@@ -10,7 +12,6 @@ const logger = getLogger('InteliProxy');
  */
 
 // Load environnement parameters
-import dotenv from 'dotenv';
 const result = dotenv.config();
 if (result.error) {
   logger.error(
@@ -28,4 +29,5 @@ import ProxyWebServer from './app/ProxyWebServer';
 // Provide ProxySysAdmin Class
 import ProxySysAdmin from './app/ProxySysAdmin';
 
+// Exports
 export default { ProxyServer, ProxyWebServer, ProxySysAdmin };

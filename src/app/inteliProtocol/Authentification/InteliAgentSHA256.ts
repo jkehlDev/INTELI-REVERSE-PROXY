@@ -1,3 +1,4 @@
+// <== Imports externals modules
 import {
   createSign,
   createVerify,
@@ -6,18 +7,16 @@ import {
   Verify,
 } from 'crypto';
 import fs from 'fs';
-import getLogger from 'app/tools/logger';
+import getLogger from '../../tools/logger';
+// ==>
 // LOGGER INSTANCE
 const logger = getLogger('InteliSHA256Factory');
-
-// TIPS https://nodejs.org/api/crypto.html#crypto_class_sign
 
 export default interface InteliAgentSHA256 {
   agentId?: string | 'sysadmin';
   signature?: string;
 }
-
-export class InteliSHA256Factory {
+export class InteliAgentSHA256Tools {
   public static genKeys(agentId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       // Generate private and public pair keys
