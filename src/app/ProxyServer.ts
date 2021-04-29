@@ -10,6 +10,7 @@ import {
   server as WsServer,
 } from 'websocket';
 import inteliConfig from 'inteliProxyConfig.json';
+import ProxySelector, { DefaultProxySelector } from './tools/ProxySelector';
 import Host from 'app/inteliProtocol/webServerEvent/Host';
 import InteliEvent from 'app/inteliProtocol/InteliEvent';
 import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
@@ -22,8 +23,6 @@ import InteliAgentSHA256, {
   inteliSHA256CheckValidity,
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from 'app/tools/logger';
-import { getBestMatchRule } from './tools/hostMatch';
-
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -41,10 +40,9 @@ enum ServerStates {
 class ProxyServer {
   private state: ServerStates = ServerStates.CLOSE; // Current server state
   private wsClientIndexMap: WeakMap<Connection, string>; // Indexed websocket active client collection on connection object (connection obj as index key)
-  private hostsIndexMap: WeakMap<Connection, Host>; // Indexed host collection on connection object (connection obj as index key)
-  private hostsQueue: Array<Connection>; // Load balancer hosts connection queue
 
-  private checkOrigin: (origin: string) => Promise<boolean>; // Callback provide request ctrl before accept or reject new host connection
+  private originValidator: (origin: string) => Promise<boolean>; // Callback provide request ctrl before accept or reject new host connection
+  private proxySelector: ProxySelector; // Instance of ProxySelector
 
   private wsServer: WsServer = new WsServer(); // Websocket server instance
   private wsHttpServer: http.Server | https.Server; // Websocket http server instance
@@ -54,10 +52,15 @@ class ProxyServer {
 
   /**
    * @constructor This provide instance of Inteli-proxy server
-   * @param cb - Callback provide origin check before accept new host connection (For CORS)
+   * @param originValidator - Callback provide origin check before accept new host connection (For CORS)
+   * @param proxySelector - Instance of ProxySelector (Optionnal, DefaultProxySelector instance by default)
    */
-  constructor(cb: (origin: string) => Promise<boolean>) {
-    this.checkOrigin = async (origin) => await cb(origin);
+  constructor(
+    originValidator: (origin: string) => Promise<boolean>,
+    proxySelector: ProxySelector = new DefaultProxySelector()
+  ) {
+    this.originValidator = async (origin) => await originValidator(origin);
+    this.proxySelector = proxySelector;
     try {
       this.wsServer.on('request', (request: Request) => {
         this.wsServerRequestHandler(this, request);
@@ -71,14 +74,24 @@ class ProxyServer {
 
       this.wsHttpServer = http.createServer();
       this.proxyHttpServer = http.createServer(
-        (req: http.IncomingMessage, res: http.ServerResponse) => {
-          const host: Host = this.getTargetHost(req.url);
-          if (host !== null) {
-            this.proxyServer.web(req, res, { target: host.target });
-          } else {
-            res.writeHead(503, { 'Content-Type': 'text/html' });
-            res.end('Service unavailable', 'utf-8');
-          }
+        async (req: http.IncomingMessage, res: http.ServerResponse) => {
+          this.proxySelector
+            .getTargetHost(req)
+            .then((host) => {
+              try {
+                if (host !== null) {
+                  this.proxyServer.web(req, res, { target: host.target });
+                } else {
+                  res.writeHead(503, { 'Content-Type': 'text/html' });
+                  res.end('Service unavailable', 'utf-8');
+                }
+              } catch (err) {
+                logger.error(err);
+              }
+            })
+            .catch((err) => {
+              logger.error(err);
+            });
         }
       );
     } catch (err) {
@@ -94,16 +107,14 @@ class ProxyServer {
    * @returns {Promise<boolean>} A promise resolve true if server properly start or false overwise
    */
   public start(): Promise<boolean> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         if (this.state === ServerStates.CLOSE) {
           this.state = ServerStates.PENDING;
           logger.info(`Inteli reverse-proxy start in progress (2 steps)...`);
 
-          this.hostsIndexMap = new WeakMap();
           this.wsClientIndexMap = new WeakMap();
-          this.hostsQueue = new Array(0);
-
+          await this.proxySelector.cleanHost();
           // Websocket server mounting
           this.wsServer.mount({
             httpServer: this.wsHttpServer,
@@ -170,7 +181,7 @@ class ProxyServer {
             }
             this.wsServer.shutDown(); // Shutdown websocket server
             if (this.wsHttpServer.listening) {
-              this.wsHttpServer.close((err: Error) => {
+              this.wsHttpServer.close(async (err: Error) => {
                 if (err) {
                   logger.error(
                     `An error occured when Inteli reverse-proxy websocket server attempted to stop.\nError message : ${err.message}\nStack: ${err.stack}`
@@ -182,7 +193,7 @@ class ProxyServer {
                   );
                   this.state = ServerStates.CLOSE;
                   this.wsClientIndexMap = new WeakMap();
-                  this.hostsIndexMap = new WeakMap();
+                  await this.proxySelector.cleanHost();
                   resolve(true);
                 }
               });
@@ -218,7 +229,7 @@ class ProxyServer {
         request.httpRequest.headers.authorization
       );
       if (
-        !(await _this.checkOrigin(request.origin)) ||
+        !(await _this.originValidator(request.origin)) ||
         !inteliSHA256CheckValidity(inteliSHA256) ||
         request.requestedProtocols[0] !== inteliConfig.wsprotocol
       ) {
@@ -254,44 +265,6 @@ class ProxyServer {
       _this.wsCliErrorHandler(_this, connection, error);
     });
     // ===>
-  }
-
-  /**
-   * @method ProxyServer#Host Get and return available host
-   * @returns {Host} Target Host or null
-   */
-  private getTargetHost(path: string): Host {
-    let connection: Connection = undefined;
-    let counter = this.hostsQueue.length;
-    let isMatch = false;
-    const hosts: Host[] = this.hostsQueue
-      .filter((con) => this.hostsIndexMap.has(con))
-      .map((con) => this.hostsIndexMap.get(con));
-    const bestRule = getBestMatchRule(path, hosts);
-    logger.warn(`bestRule : ${bestRule}`);
-    let host: Host;
-    do {
-      while (
-        !this.hostsIndexMap.has(connection) &&
-        this.hostsQueue.length > 0
-      ) {
-        connection = this.hostsQueue.shift();
-        counter--;
-      }
-      if (this.hostsIndexMap.has(connection)) {
-        this.hostsQueue.push(connection);
-        host = this.hostsIndexMap.get(connection);
-        isMatch = bestRule === host.rule;
-      }
-    } while (counter > 0 && !isMatch);
-    if (this.hostsIndexMap.has(connection) && isMatch) {
-      return host;
-    } else {
-      logger.warn(
-        `Inteli reverse-proxy server can't resolve web client request, no host registred`
-      );
-      return null;
-    }
   }
 
   /**
@@ -380,24 +353,19 @@ class ProxyServer {
    * @param reason WS client connection close reason code
    * @param desc WS client connection close reason description
    */
-  private wsCliCloseHandler(
+  private async wsCliCloseHandler(
     _this: ProxyServer,
     connection: Connection,
     reason: number,
     desc: string
   ) {
-    if (_this.hostsIndexMap.has(connection)) {
-      const host: Host = _this.hostsIndexMap.get(connection);
-      logger.info(
-        `Websocket client connection close [${reason} | ${desc}]. {hostId: ${host.hostId}, host : ${host.target.host}, port : ${host.target.port}}`
-      );
-    } else if (_this.wsClientIndexMap.has(connection)) {
+    if (_this.wsClientIndexMap.has(connection)) {
       const hostId: string = _this.wsClientIndexMap.get(connection);
       logger.info(
         `Websocket client connection close [${reason} | ${desc}]. From hostId: [${hostId}]`
       );
     }
-    _this.hostsIndexMap.delete(connection);
+    await _this.proxySelector.removeHost(connection);
     _this.wsClientIndexMap.delete(connection);
   }
 
@@ -412,12 +380,7 @@ class ProxyServer {
     connection: Connection,
     error: Error
   ) {
-    if (_this.hostsIndexMap.has(connection)) {
-      const host: Host = _this.hostsIndexMap.get(connection);
-      logger.error(
-        `An error occured with client. {hostId: ${host.hostId}, host : ${host.target.host}, port : ${host.target.port}}\nError message : ${error.message}\nStack: ${error.stack}`
-      );
-    } else {
+    if (_this.wsClientIndexMap.has(connection)) {
       const hostId: string = _this.wsClientIndexMap.get(connection);
       logger.error(
         `An error occured with client. From hostId: [${hostId}].\nError message : ${error.message}\nStack: ${error.stack}`
@@ -433,7 +396,6 @@ class ProxyServer {
   ) {
     switch (event.header.action) {
       case ActionEnum.add:
-        // TODO add cert to store
         logger.info(
           `Sysadmin add public certificat to certstore event received for agentID:[${event.payload.hostId}].`
         );
@@ -446,7 +408,6 @@ class ProxyServer {
         );
         break;
       case ActionEnum.remove:
-        // TODO remove cert from store
         logger.info(
           `Sysadmin remove public certificat from certstore event received for agentID:[${event.payload.hostId}].`
         );
@@ -458,10 +419,12 @@ class ProxyServer {
         );
         break;
       default:
-        const hostId: string = _this.wsClientIndexMap.get(connection);
-        logger.warn(
-          `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
-        );
+        if (_this.wsClientIndexMap.has(connection)) {
+          const hostId: string = _this.wsClientIndexMap.get(connection);
+          logger.warn(
+            `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
+          );
+        }
         connection.close(
           Connection.CLOSE_REASON_PROTOCOL_ERROR,
           'PROTOCOL_ERROR'
@@ -470,24 +433,25 @@ class ProxyServer {
     }
   }
 
-  private handleTypeWebServerEvent(
+  private async handleTypeWebServerEvent(
     _this: ProxyServer,
     connection: Connection,
     event: WebServerEvent
   ) {
     switch (event.header.action) {
       case ActionEnum.open:
-        _this.hostsIndexMap.set(connection, event.payload);
-        _this.hostsQueue.push(connection);
+        await _this.proxySelector.addHost(connection, event.payload);
         break;
       case ActionEnum.close:
         connection.close(Connection.CLOSE_REASON_NORMAL, `NORMAL CLOSE`);
         break;
       default:
-        const hostId: string = _this.wsClientIndexMap.get(connection);
-        logger.warn(
-          `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
-        );
+        if (_this.wsClientIndexMap.has(connection)) {
+          const hostId: string = _this.wsClientIndexMap.get(connection);
+          logger.warn(
+            `Invalid websocket client message action type recieved: <${event.header.action}>. From hostId: ${hostId}`
+          );
+        }
         connection.close(
           Connection.CLOSE_REASON_PROTOCOL_ERROR,
           'PROTOCOL_ERROR'

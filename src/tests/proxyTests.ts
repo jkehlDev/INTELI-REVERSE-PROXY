@@ -21,20 +21,20 @@ function runTest() {
     'localhost',
     4242,
     'WEB001',
-    '/test',
+    '/',
     http.createServer((req, res) => {
       res.setHeader('content-type', 'text/plain');
-      res.write('hello, world 1 !');
+      res.end('hello, world 1 !');
     })
   );
   const web002 = new inteliProxy.ProxyWebServer( // NEW WEB SERVER 002
     'localhost',
     4243,
     'WEB002',
-    '/',
+    '/test',
     http.createServer((req, res) => {
       res.setHeader('content-type', 'text/plain');
-      res.write('hello, world 2 !');
+      res.end('hello, world 2 !');
     })
   );
   proxyServer.start().then((result) => {
@@ -133,7 +133,7 @@ function runTest() {
           // STOP PROXY
           logger.error(err);
         });
-      }, 20000);
+      }, 30000);
     }
   });
 }
