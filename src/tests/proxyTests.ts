@@ -52,11 +52,9 @@ function runTest() {
           logger.error(`Cannot send adding request to proxy server`);
         })
         .finally(() => {
-          setTimeout(() => {
-            proxySysAdmin.stop().catch((err) => {
-              logger.error(err);
-            });
-          }, 500);
+          proxySysAdmin.stop().catch((err) => {
+            logger.error(err);
+          });
         });
       setTimeout(() => {
         web001 // START WEB SERVER

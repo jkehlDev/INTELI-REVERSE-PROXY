@@ -108,7 +108,6 @@ class ProxyWebServer {
           logger.info(
             `Inteli reverse-proxy web server start in progress (2 steps) [${this.inteliAgentSHA256.agentId}] ...`
           );
-
           this.wsClient.on('connectFailed', (err: Error) => {
             logger.error(
               `An error occured when attempted websocket connection [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
@@ -116,7 +115,6 @@ class ProxyWebServer {
             this.state = ServerStates.CLOSE;
             reject(err);
           });
-
           this.wsClient.on('connect', (connection: Connection) => {
             this.connection = connection;
             connection.on('error', (err: Error) => {
@@ -128,7 +126,6 @@ class ProxyWebServer {
             connection.on('message', (data: IMessage) => {
               this.messageHandler(data);
             });
-
             logger.info(
               `Inteli reverse-proxy web server start (1/2) [${this.inteliAgentSHA256.agentId}]: websocket client start`
             );
@@ -154,7 +151,6 @@ class ProxyWebServer {
               });
             });
           });
-
           const headers: http.OutgoingHttpHeaders = {
             Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
           };
@@ -191,7 +187,7 @@ class ProxyWebServer {
           logger.info(
             `Inteli reverse-proxy web server stop in progress (2 steps) [${this.inteliAgentSHA256.agentId}] ...`
           );
-          try {
+          setTimeout(() => {
             this.connection.close();
             logger.info(
               `Inteli reverse-proxy web server stop (1/2) [${this.inteliAgentSHA256.agentId}]: websocket client stop`
@@ -214,12 +210,7 @@ class ProxyWebServer {
                 });
               }
             }, inteliConfig.webserver.closeTimeout);
-          } catch (err) {
-            logger.error(
-              `An error occured when Inteli reverse-proxy web server attempted to stop [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
-            );
-            reject(err);
-          }
+          }, inteliConfig.webserver.closeTimeout);
         } else {
           logger.warn(
             `Inteli reverse-proxy web server stop attempt aborded [${this.inteliAgentSHA256.agentId}]: server is already stop or in intermediate state`

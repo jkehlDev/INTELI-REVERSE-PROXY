@@ -12,6 +12,12 @@
   },
   "webserver": {
     "version": "1.0.0",
-    "closeTimeout": 5000
+    "closeTimeout": 1000
+  },
+  "sysadmin": {
+    "closeTimeout": 500
+  },
+  "proxyserver": {
+    "closeTimeout": 500
   }
 }

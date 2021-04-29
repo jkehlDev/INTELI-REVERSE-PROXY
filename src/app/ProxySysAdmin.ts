@@ -64,53 +64,60 @@ class ProxySysAdmin {
    */
   public start(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      if (this.state === ServerStates.CLOSE) {
-        logger.info(
-          `Inteli reverse-proxy sysadmin connection start in progress (1 steps)...`
-        );
+      try {
+        if (this.state === ServerStates.CLOSE) {
+          logger.info(
+            `Inteli reverse-proxy sysadmin connection start in progress (1 steps)...`
+          );
 
-        this.state = ServerStates.PENDING;
+          this.state = ServerStates.PENDING;
 
-        const headers: http.OutgoingHttpHeaders = {
-          Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
-        };
+          const headers: http.OutgoingHttpHeaders = {
+            Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
+          };
 
-        this.wsClient.on('connect', (connection: Connection) => {
-          this.connection = connection;
-          connection.on('error', (err: Error) => {
-            this.wsClientErrorHandler(this, err);
+          this.wsClient.on('connect', (connection: Connection) => {
+            this.connection = connection;
+            connection.on('error', (err: Error) => {
+              this.wsClientErrorHandler(this, err);
+            });
+            connection.on('close', (code: number, desc: string) => {
+              this.wsClientCloseHandler(this, code, desc);
+            });
+            connection.on('message', (data: IMessage) => {
+              this.wsClientMessageHandler(this, data);
+            });
+            this.state = ServerStates.OPEN;
+            resolve();
           });
-          connection.on('close', (code: number, desc: string) => {
-            this.wsClientCloseHandler(this, code, desc);
-          });
-          connection.on('message', (data: IMessage) => {
-            this.wsClientMessageHandler(this, data);
-          });
-          this.state = ServerStates.OPEN;
-          resolve();
-        });
 
-        this.wsClient.on('connectFailed', (err: Error) => {
-          logger.error(
-            `Inteli reverse-proxy sysadmin event - An error occured when attempted websocket connection
+          this.wsClient.on('connectFailed', (err: Error) => {
+            logger.error(
+              `Inteli reverse-proxy sysadmin event - An error occured when attempted websocket connection
               Error message : ${err.message}
               Stack: ${err.stack}`
-          );
-          this.state = ServerStates.CLOSE;
-          reject(err);
-        });
+            );
+            this.state = ServerStates.CLOSE;
+            reject(err);
+          });
 
-        this.wsClient.connect(
-          `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-          inteliConfig.wsprotocol,
-          this.origin,
-          headers
+          this.wsClient.connect(
+            `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
+            inteliConfig.wsprotocol,
+            this.origin,
+            headers
+          );
+        } else {
+          logger.warn(
+            `Inteli reverse-proxy sysadmin connection start attempt aborded: Sysadmin is already start or in intermediate state`
+          );
+          reject(`ERROR_CLIENT_STATE`);
+        }
+      } catch (err) {
+        logger.error(
+          `An error occured when Inteli proxy sysadmin attempt to start.\nError message : ${err.message}\nStack: ${err.stack}`
         );
-      } else {
-        logger.warn(
-          `Inteli reverse-proxy sysadmin connection start attempt aborded: Sysadmin is already start or in intermediate state`
-        );
-        reject(`ERROR_CLIENT_STATE`);
+        reject(err);
       }
     });
   }
@@ -120,31 +127,34 @@ class ProxySysAdmin {
    */
   public stop(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      if (this.state === ServerStates.OPEN) {
-        this.state = ServerStates.PENDING;
-        try {
-          logger.info(
-            `Inteli reverse-proxy sysadmin stop in progress (1 steps) ...`
+      try {
+        if (this.state === ServerStates.OPEN) {
+          this.state = ServerStates.PENDING;
+          setTimeout(() => {
+            logger.info(
+              `Inteli reverse-proxy sysadmin stop in progress (1 steps) ...`
+            );
+            this.connection.close();
+            logger.info(
+              `Inteli reverse-proxy sysadmin stop (1/1) : websocket client stop`
+            );
+
+            this.state = ServerStates.CLOSE;
+            resolve();
+          }, inteliConfig.sysadmin.closeTimeout);
+        } else {
+          logger.warn(
+            `Inteli reverse-proxy sysadmin stop attempt aborded: Sysadmin is already stop or in intermediate state`
           );
-          this.connection.close();
-          logger.info(
-            `Inteli reverse-proxy sysadmin stop (1/1) : websocket client stop`
-          );
-        } catch (err) {
-          logger.error(
-            `An error occured when Inteli reverse-proxy sysadmin attempted to stop 
-              Error message : ${err.message}
-              Stack: ${err.stack}`
-          );
-          reject(err);
+          reject(`ERROR_CLIENT_STATE`);
         }
-        this.state = ServerStates.CLOSE;
-        resolve();
-      } else {
-        logger.warn(
-          `Inteli reverse-proxy sysadmin stop attempt aborded: Sysadmin is already stop or in intermediate state`
+      } catch (err) {
+        logger.error(
+          `An error occured when Inteli reverse-proxy sysadmin attempted to stop 
+        Error message : ${err.message}
+        Stack: ${err.stack}`
         );
-        reject(`ERROR_CLIENT_STATE`);
+        reject(err);
       }
     });
   }
