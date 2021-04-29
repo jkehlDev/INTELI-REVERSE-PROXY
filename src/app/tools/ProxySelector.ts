@@ -23,20 +23,11 @@ function compareint(num1: number, num2: number): number {
   return num1 > num2 ? 1 : num1 < num2 ? -1 : 0;
 }
 
-function getBestMatchRule(
-  path: string,
-  entries: { connection: Connection; host: Host }[]
-): string {
-  const sorted = entries
-    .filter((entry) => ruleMatch(entry.host.rule, path))
-    .sort((entry1, entry2) =>
-      compareint(entry2.host.rule.length, entry1.host.rule.length)
-    );
-  if (sorted.length > 0) {
-    return sorted[0].host.rule;
-  } else {
-    return undefined;
-  }
+function getBestMatchRule(path: string, hosts: Host[]): string {
+  const sortedHosts = hosts
+    .filter((host) => ruleMatch(host.rule, path))
+    .sort((host1, host2) => compareint(host2.rule.length, host1.rule.length));
+  return sortedHosts.length > 0 ? sortedHosts[0].rule : undefined;
 }
 
 export default abstract class ProxySelector {
@@ -53,27 +44,21 @@ export class DefaultProxySelector extends ProxySelector {
   public getTargetHost(req: http.IncomingMessage): Promise<Host> {
     return new Promise((resolve, reject) => {
       try {
-        let entry: { connection: Connection; host: Host } = undefined;
+        let host: Host = undefined;
         if (this.conTbl.length > 0) {
-          const entries: { connection: Connection; host: Host }[] = this.conTbl
+          const hosts: Host[] = this.conTbl
             .filter((con) => this.hostsMap.has(con))
-            .map((con) => {
-              return { connection: con, host: this.hostsMap.get(con) };
-            });
-          if (entries.length > 0) {
-            const bestRule = getBestMatchRule(req.url, entries);
-            entry = entries
-              .filter((entry) => entry.host.rule === bestRule)
-              .sort((entry1, entry2) =>
-                compareint(entry1.host.use, entry2.host.use)
-              )
+            .map((con) => this.hostsMap.get(con));
+          if (hosts.length > 0) {
+            const bestRule = getBestMatchRule(req.url, hosts);
+            host = hosts
+              .filter((host) => host.rule === bestRule)
+              .sort((host1, host2) => compareint(host1.use, host2.use))
               .shift();
           }
         }
-        let host: Host = undefined;
-        if (entry) {
-          entry.host.use = (entry.host.use + 1) % 100;
-          host = entry.host;
+        if (host) {
+          host.use = (host.use + 1) % 100;
         }
         resolve(host);
       } catch (err) {
