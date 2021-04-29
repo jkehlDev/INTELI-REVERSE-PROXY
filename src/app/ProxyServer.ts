@@ -19,6 +19,7 @@ import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
 } from './tools/ProxyMsgHandler';
 import ResolveStates from './tools/ResolveStates';
+import Host from './inteliProtocol/webServerEvent/Host';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -68,25 +69,20 @@ class ProxyServer {
 
       this.wsHttpServer = http.createServer();
       this.proxyHttpServer = http.createServer(
-        (req: http.IncomingMessage, res: http.ServerResponse) => {
-          logger.warn('Request received');
-          this.proxySelector
-            .getTargetHost(req)
-            .then((host) => {
-              try {
-                if (host !== null) {
-                  this.proxyServer.web(req, res, { target: host.target });
-                } else {
-                  res.writeHead(503, { 'Content-Type': 'text/html' });
-                  res.end('Service unavailable', 'utf-8');
-                }
-              } catch (err) {
-                logger.error(err);
-              }
-            })
-            .catch((err) => {
-              logger.error(err);
-            });
+        async (req: http.IncomingMessage, res: http.ServerResponse) => {
+          try {
+            const host: Host = await this.proxySelector.getTargetHost(req);
+            if (host) {
+              this.proxyServer.web(req, res, { target: host.target });
+            } else {
+              res.writeHead(503, { 'Content-Type': 'text/html' });
+              res.end('Service unavailable', 'utf-8');
+            }
+          } catch (err) {
+            logger.error(err);
+            res.writeHead(503, { 'Content-Type': 'text/html' });
+            res.end('Service unavailable', 'utf-8');
+          }
         }
       );
     } catch (err) {

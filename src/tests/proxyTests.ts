@@ -13,7 +13,7 @@ function runTest() {
   const checkOrigin: (origin: string) => Promise<boolean> = async (
     origin: string
   ) => {
-    return true;
+    return origin === 'localhost';
   };
   const proxyServer = new inteliProxy.ProxyServer(checkOrigin); // NEW PROXY SERVER
   const proxySysAdmin = new inteliProxy.ProxySysAdmin('localhost'); // NEW PROXY SysAdmin
@@ -93,7 +93,7 @@ function runTest() {
                       logger.error(err);
                     });
                   });
-              },40000);
+              }, 40000);
             }
           })
           .catch((err) => {
@@ -106,7 +106,7 @@ function runTest() {
           // STOP PROXY
           logger.error(err);
         });
-      }, 120000);
+      }, 60000);
     }
   });
 }

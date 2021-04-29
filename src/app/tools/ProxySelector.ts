@@ -23,13 +23,17 @@ function compareint(num1: number, num2: number): number {
   return num1 > num2 ? 1 : num1 < num2 ? -1 : 0;
 }
 
-function getBestMatchRule(path: string, hosts: Host[]): string {
-  const sorted = hosts
-    .map((host) => host.rule)
-    .filter((rule) => ruleMatch(rule, path))
-    .sort((rule1, rule2) => -compareint(rule1.length, rule2.length));
+function getBestMatchRule(
+  path: string,
+  entries: { connection: Connection; host: Host }[]
+): string {
+  const sorted = entries
+    .filter((entry) => ruleMatch(entry.host.rule, path))
+    .sort((entry1, entry2) =>
+      compareint(entry2.host.rule.length, entry1.host.rule.length)
+    );
   if (sorted.length > 0) {
-    return sorted[0];
+    return sorted[0].host.rule;
   } else {
     return undefined;
   }
@@ -44,46 +48,34 @@ export default abstract class ProxySelector {
 
 export class DefaultProxySelector extends ProxySelector {
   private hostsMap: WeakMap<Connection, Host> = new WeakMap<Connection, Host>(); // Indexed host collection on connection object (connection obj as index key)
-  private hostsQueue: Array<Connection> = new Array<Connection>(); // Load balancer hosts connection queue
+  private conTbl: Array<Connection> = new Array<Connection>(); // Load balancer hosts connection queue
 
   public getTargetHost(req: http.IncomingMessage): Promise<Host> {
     return new Promise((resolve, reject) => {
       try {
-        let connection: Connection = undefined;
-        let counter = this.hostsQueue.length;
-        let isMatch = false;
-        const hosts: Host[] = this.hostsQueue
-          .filter((con) => this.hostsMap.has(con))
-          .map((con) => this.hostsMap.get(con));
-        const bestRule = getBestMatchRule(req.url, hosts);
-        if (bestRule) {
-          let host: Host;
-          do {
-            while (!this.hostsMap.has(connection) && counter > 0) {
-              connection = this.hostsQueue.shift();
-              counter--;
-            }
-            if (this.hostsMap.has(connection)) {
-              this.hostsQueue.push(connection);
-              host = this.hostsMap.get(connection);
-              isMatch = bestRule === host.rule;
-            }
-          } while (counter > 0 && !isMatch);
-
-          if (this.hostsMap.has(connection) && isMatch) {
-            resolve(host);
-          } else {
-            logger.warn(
-              `Can't resolve target web server for web client request, no host registred match`
-            );
-            resolve(null);
+        let entry: { connection: Connection; host: Host } = undefined;
+        if (this.conTbl.length > 0) {
+          const entries: { connection: Connection; host: Host }[] = this.conTbl
+            .filter((con) => this.hostsMap.has(con))
+            .map((con) => {
+              return { connection: con, host: this.hostsMap.get(con) };
+            });
+          if (entries.length > 0) {
+            const bestRule = getBestMatchRule(req.url, entries);
+            entry = entries
+              .filter((entry) => entry.host.rule === bestRule)
+              .sort((entry1, entry2) =>
+                compareint(entry1.host.use, entry2.host.use)
+              )
+              .shift();
           }
-        } else {
-          logger.warn(
-            `Can't resolve target web server for web client request, no host registred match`
-          );
-          resolve(null);
         }
+        let host: Host = undefined;
+        if (entry) {
+          entry.host.use = (entry.host.use + 1) % 100;
+          host = entry.host;
+        }
+        resolve(host);
       } catch (err) {
         reject(err);
       }
@@ -92,8 +84,11 @@ export class DefaultProxySelector extends ProxySelector {
   public addHost(key: any, host: Host): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.hostsMap.set(key as Connection, host);
-        this.hostsQueue.push(key as Connection);
+        if (!this.hostsMap.has(key)) {
+          host.use = 0;
+          this.hostsMap.set(key, host);
+          this.conTbl.push(key);
+        }
       } catch (err) {
         reject(err);
       }
@@ -103,7 +98,10 @@ export class DefaultProxySelector extends ProxySelector {
   public removeHost(key: any): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.hostsMap.delete(key as Connection);
+        if (this.hostsMap.has(key)) {
+          this.hostsMap.delete(key);
+          this.conTbl = this.conTbl.filter((con) => this.hostsMap.has(con));
+        }
         resolve();
       } catch (err) {
         reject(err);
@@ -113,8 +111,13 @@ export class DefaultProxySelector extends ProxySelector {
   public cleanHost(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.hostsMap = new WeakMap<Connection, Host>();
-        this.hostsQueue = new Array<Connection>();
+        let connection: any;
+        while (this.conTbl.length > 0) {
+          connection = this.conTbl.shift();
+          if (this.hostsMap.has(connection)) {
+            this.hostsMap.delete(connection);
+          }
+        }
         resolve();
       } catch (err) {
         reject(err);

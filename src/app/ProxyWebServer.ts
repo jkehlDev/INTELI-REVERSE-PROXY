@@ -16,7 +16,6 @@ import InteliAgentSHA256, {
 } from 'app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from 'app/tools/logger';
 import ResolveStates from './tools/ResolveStates';
-import InteliEvent from './inteliProtocol/InteliEvent';
 import TypeEnum from './inteliProtocol/enums/EventTypes';
 // ==>
 // LOGGER INSTANCE
