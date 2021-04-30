@@ -1,10 +1,6 @@
-// <== Imports externals modules
-import ActionsEnum from './enums/ActionsEnum';
-import TypesEnum from './enums/TypesEnum';
-// ==>
 interface InteliEvent<
-  Type extends TypesEnum | string,
-  Action extends ActionsEnum | string,
+  Type extends string,
+  Action extends string,
   Auth,
   Payload
 > {

@@ -6,7 +6,6 @@ import {
   connection as Connection,
   IMessage,
 } from 'websocket';
-import inteliConfig from '../inteliProxyConfig.json';
 import InteliAgentSHA256, {
   InteliAgentSHA256Tools,
 } from './inteliProtocol/Authentification/InteliAgentSHA256';
@@ -17,6 +16,7 @@ import TypesEnum from './inteliProtocol/enums/TypesEnum';
 import InteliEventFactory from './inteliProtocol/InteliEventFactory';
 import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
 import getLogger from './tools/logger';
+import InteliConfig from './tools/InteliConfig';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySysAdmin');
@@ -32,6 +32,7 @@ enum ServerStates {
  * @version 1.00
  */
 class ProxySysAdmin {
+  private inteliConfig: InteliConfig;
   private state: ServerStates = ServerStates.CLOSE; // Sysadmin websocket current state
   private wsClient: WsClient = new WsClient({
     tlsOptions: { rejectUnauthorized: false },
@@ -45,10 +46,12 @@ class ProxySysAdmin {
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy SysAdmin client
+   * @param inteliConfig - Inteli-reverse-proxy configuration
    * @param origin Websocket client origin for server CORS check validity
    */
-  constructor(origin: string) {
+  constructor(inteliConfig: InteliConfig, origin: string) {
     try {
+      this.inteliConfig = inteliConfig;
       this.origin = origin;
       this.inteliAgentSHA256 = InteliAgentSHA256Tools.makeInteliAgentSHA256(
         'sysadmin'
@@ -101,17 +104,17 @@ class ProxySysAdmin {
             reject(err);
           });
 
-          if (inteliConfig.secure) {
+          if (this.inteliConfig.secure) {
             this.wsClient.connect(
               `wss://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              inteliConfig.wsprotocol,
+              this.inteliConfig.wsprotocol,
               this.origin,
               headers
             );
           } else {
             this.wsClient.connect(
               `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              inteliConfig.wsprotocol,
+              this.inteliConfig.wsprotocol,
               this.origin,
               headers
             );
@@ -151,7 +154,7 @@ class ProxySysAdmin {
             );
             this.state = ServerStates.CLOSE;
             resolve();
-          }, inteliConfig.sysadmin.closeTimeout);
+          }, this.inteliConfig.sysadmin.closeTimeout);
         } else {
           logger.warn(
             `Inteli reverse-proxy sysadmin stop attempt aborded: Sysadmin is already stop or in intermediate state`

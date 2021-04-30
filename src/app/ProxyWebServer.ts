@@ -6,7 +6,6 @@ import {
   client as WsClient,
   IMessage,
 } from 'websocket';
-import inteliConfig from '../inteliProxyConfig.json';
 import ActionsEnum from './inteliProtocol/enums/ActionsEnum';
 import EncodesEnum from './inteliProtocol/enums/EncodesEnum';
 import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
@@ -17,6 +16,7 @@ import InteliAgentSHA256, {
   InteliAgentSHA256Tools,
 } from './inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from './tools/logger';
+import InteliConfig from './tools/InteliConfig';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyWebServer');
@@ -49,6 +49,7 @@ function wsClientMessageHandler(data: IMessage) {
  * @version 1.00
  */
 class ProxyWebServer {
+  private inteliConfig: InteliConfig;
   private state: ServerStates = ServerStates.CLOSE; // Server current state
 
   private wsClient: WsClient = new WsClient({
@@ -68,6 +69,7 @@ class ProxyWebServer {
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy web server (back-end web http server)
+   * @param inteliConfig - Inteli-reverse-proxy configuration
    * @param host - Inteli reverse-proxy web server host
    * @param port - Inteli reverse-proxy web server port
    * @param agentId - Inteli reverse-proxy web server identifiant
@@ -76,6 +78,7 @@ class ProxyWebServer {
    * @param messageHandler - Websocket client message handler (optional)
    */
   constructor(
+    inteliConfig: InteliConfig,
     host: string,
     port: number,
     agentId: string,
@@ -83,21 +86,22 @@ class ProxyWebServer {
     httpServer: http.Server | https.Server,
     messageHandler: (data: IMessage) => void = wsClientMessageHandler
   ) {
-    this.host = host;
-    this.port = port;
-    this.rule = rule;
     try {
+      this.inteliConfig = inteliConfig;
+      this.host = host;
+      this.port = port;
+      this.rule = rule;
       this.inteliAgentSHA256 = InteliAgentSHA256Tools.makeInteliAgentSHA256(
         agentId
       );
+      this.messageHandler = messageHandler;
+      this.httpServer = httpServer;
     } catch (err) {
       logger.error(
         `An error occured during instanciation of Inteli reverse-proxy web server [${agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
       );
       throw err;
     }
-    this.messageHandler = messageHandler;
-    this.httpServer = httpServer;
   }
 
   /**
@@ -140,7 +144,7 @@ class ProxyWebServer {
               const openProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
                 ActionsEnum.open,
                 this.inteliAgentSHA256,
-                inteliConfig.webserver.version,
+                this.inteliConfig.webserver.version,
                 this.host,
                 this.port,
                 this.rule
@@ -158,17 +162,17 @@ class ProxyWebServer {
           const headers: http.OutgoingHttpHeaders = {
             Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
           };
-          if (inteliConfig.secure) {
+          if (this.inteliConfig.secure) {
             this.wsClient.connect(
               `wss://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              inteliConfig.wsprotocol,
+              this.inteliConfig.wsprotocol,
               this.host,
               headers
             );
           } else {
             this.wsClient.connect(
               `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              inteliConfig.wsprotocol,
+              this.inteliConfig.wsprotocol,
               this.host,
               headers
             );
@@ -204,7 +208,7 @@ class ProxyWebServer {
             const closeProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
               ActionsEnum.close,
               this.inteliAgentSHA256,
-              inteliConfig.webserver.version,
+              this.inteliConfig.webserver.version,
               this.host,
               this.port,
               this.rule
@@ -239,8 +243,8 @@ class ProxyWebServer {
                   }
                 });
               }
-            }, inteliConfig.webserver.closeTimeout);
-          }, inteliConfig.webserver.closeTimeout);
+            }, this.inteliConfig.webserver.closeTimeout);
+          }, this.inteliConfig.webserver.closeTimeout);
         } else {
           logger.warn(
             `Inteli reverse-proxy web server stop attempt aborded [${this.inteliAgentSHA256.agentId}]: server is already stop or in intermediate state`

@@ -9,7 +9,7 @@ import {
   request as Request,
   server as WsServer,
 } from 'websocket';
-import inteliConfig from '../inteliProxyConfig.json';
+/* import inteliConfig from '../inteliProxyConfig.json'; */
 import InteliAgentSHA256, {
   getInteliSHA256FrmAuthorizationHeader,
   inteliSHA256CheckValidity,
@@ -21,6 +21,7 @@ import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
 } from './tools/ProxyMsgHandler';
 import getLogger from './tools/logger';
+import InteliConfig from './tools/InteliConfig';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -36,6 +37,7 @@ enum ServerStates {
  * @version 1.00
  */
 class ProxyServer {
+  private inteliConfig: InteliConfig;
   private state: ServerStates = ServerStates.CLOSE; // Current server state
   private wsClientIndexMap: WeakMap<Connection, string>; // Indexed websocket active client collection on connection object (connection obj as index key)
 
@@ -46,31 +48,35 @@ class ProxyServer {
   private wsServer: WsServer = new WsServer(); // Websocket server instance
   private wsHttpServer: http.Server | https.Server; // Websocket http server instance
 
-  private proxyServer: httpProxy = httpProxy.createProxyServer({
-    secure: inteliConfig.secure,
-  }); // Proxy server instance
+  private proxyServer: httpProxy; // Proxy server instance
   private proxyHttpServer: http.Server | https.Server; // Proxy http server instance
 
   /**
    * @constructor This provide instance of Inteli-proxy server
+   * @param inteliConfig - Inteli-reverse-proxy configuration
    * @param originValidator - Callback provide origin check before accept new host connection (For CORS)
    * @param proxySelector - Instance of ProxySelector (Optionnal, DefaultProxySelector instance by default)
    * @param proxyMsgHandler - Instance of ProxyMsgHandler (Optionnal, DefaultProxySelector instance by default)
    */
   constructor(
+    inteliConfig: InteliConfig,
     originValidator: (origin: string) => Promise<boolean>,
     proxySelector: ProxySelector = new DefaultProxySelector(),
     proxyMsgHandler: ProxyMsgHandler = new DefaultProxyMsgHandler()
   ) {
-    logger.info(
-      `Inteli Proxy Server secure mode (TSL) [${
-        inteliConfig.secure ? 'ENABLE' : 'DISABLE'
-      }].`
-    );
-    this.originValidator = async (origin) => await originValidator(origin);
-    this.proxySelector = proxySelector;
-    this.proxyMsgHandler = proxyMsgHandler;
     try {
+      this.inteliConfig = inteliConfig;
+      logger.info(
+        `Inteli Proxy Server secure mode (TSL) [${
+          this.inteliConfig.secure ? 'ENABLE' : 'DISABLE'
+        }].`
+      );
+      this.proxyServer = httpProxy.createProxyServer({
+        secure: this.inteliConfig.secure,
+      });
+      this.originValidator = async (origin) => await originValidator(origin);
+      this.proxySelector = proxySelector;
+      this.proxyMsgHandler = proxyMsgHandler;
       this.wsServer.on('request', (request: Request) => {
         this.wsServerRequestHandler(this, request);
       });
@@ -152,7 +158,7 @@ class ProxyServer {
           // Websocket server mounting
           this.wsServer.mount({
             httpServer: this.wsHttpServer,
-            ...inteliConfig.wsServerMount,
+            ...this.inteliConfig.wsServerMount,
           });
 
           // Websocket server start listening
@@ -233,7 +239,7 @@ class ProxyServer {
                 }
               });
             }
-          }, inteliConfig.proxyserver.closeTimeout);
+          }, this.inteliConfig.proxyserver.closeTimeout);
         } else {
           logger.warn(
             `Inteli reverse-proxy server stop attempt aborded: server is already stop or in intermediate state`
@@ -266,7 +272,7 @@ class ProxyServer {
       if (
         !(await _this.originValidator(request.origin)) ||
         !inteliSHA256CheckValidity(inteliSHA256) ||
-        request.requestedProtocols[0] !== inteliConfig.wsprotocol
+        request.requestedProtocols[0] !== _this.inteliConfig.wsprotocol
       ) {
         request.reject(401); // Reject unauthaurized client
         logger.warn(
