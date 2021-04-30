@@ -80,13 +80,31 @@ class ProxyServer {
         try {
           const host: Host = await this.proxySelector.getTargetHost(req);
           if (host) {
-            this.proxyServer.web(req, res, { target: host.target });
+            this.proxyServer.web(
+              req,
+              res,
+              {
+                target: {
+                  ...host.target,
+                  protocol: inteliConfig ? 'https:' : 'http:',
+                },
+              },
+              (err) => {
+                logger.error(
+                  `An error occured when Inteli reverse-proxy server attempt to forward request.\nError message : ${err.message}\nStack: ${err.stack}`
+                );
+                res.writeHead(503, { 'Content-Type': 'text/html' });
+                res.end('Service unavailable', 'utf-8');
+              }
+            );
           } else {
             res.writeHead(503, { 'Content-Type': 'text/html' });
             res.end('Service unavailable', 'utf-8');
           }
         } catch (err) {
-          logger.error(err);
+          logger.error(
+            `An error occured when Inteli reverse-proxy server attempt to forward request.\nError message : ${err.message}\nStack: ${err.stack}`
+          );
           res.writeHead(503, { 'Content-Type': 'text/html' });
           res.end('Service unavailable', 'utf-8');
         }
