@@ -1,7 +1,7 @@
 // <== Imports externals modules
 import fs from 'fs';
 import http from 'http';
-import inteliProxy from '../inteliProxy';
+import inteliProxy from '..';
 import { InteliAgentSHA256Tools } from '../app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from '../app/tools/logger';
 // ==>
