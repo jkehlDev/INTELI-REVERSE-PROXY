@@ -3,6 +3,7 @@ interface Host {
   version: string;
   rule: string;
   use?: number;
+  pending?: boolean;
   target: {
     host: string;
     port: number;
