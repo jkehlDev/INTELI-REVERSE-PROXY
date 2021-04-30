@@ -1,10 +1,5 @@
 export default interface InteliConfig {
   secure: boolean;
-  TSLCertifacts: {
-    certFilePath: string;
-    keyFilePath: string;
-  };
-  wsprotocol: string;
   wsServerMount: {
     keepalive: true;
     keepaliveInterval: number;
@@ -24,5 +19,9 @@ export default interface InteliConfig {
   };
   proxyserver: {
     closeTimeout: number;
+    TSLCertifacts: {
+      certFilePath: string;
+      keyFilePath: string;
+    };
   };
 }

@@ -17,6 +17,7 @@ import InteliAgentSHA256, {
 } from './inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from './tools/logger';
 import InteliConfig from './tools/InteliConfig';
+import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyWebServer');
@@ -165,14 +166,14 @@ class ProxyWebServer {
           if (this.inteliConfig.secure) {
             this.wsClient.connect(
               `wss://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              this.inteliConfig.wsprotocol,
+              INTELI_PROTOCOL,
               this.host,
               headers
             );
           } else {
             this.wsClient.connect(
               `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              this.inteliConfig.wsprotocol,
+              INTELI_PROTOCOL,
               this.host,
               headers
             );

@@ -22,6 +22,7 @@ import ProxyMsgHandler, {
 } from './tools/ProxyMsgHandler';
 import getLogger from './tools/logger';
 import InteliConfig from './tools/InteliConfig';
+import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -122,10 +123,14 @@ class ProxyServer {
       if (inteliConfig.secure) {
         const options = {
           key: fs.readFileSync(
-            `${process.cwd()}/${inteliConfig.TSLCertifacts.keyFilePath}`
+            `${process.cwd()}/${
+              inteliConfig.proxyserver.TSLCertifacts.keyFilePath
+            }`
           ),
           cert: fs.readFileSync(
-            `${process.cwd()}/${inteliConfig.TSLCertifacts.certFilePath}`
+            `${process.cwd()}/${
+              inteliConfig.proxyserver.TSLCertifacts.certFilePath
+            }`
           ),
         };
         this.wsHttpServer = https.createServer(options);
@@ -272,7 +277,7 @@ class ProxyServer {
       if (
         !(await _this.originValidator(request.origin)) ||
         !inteliSHA256CheckValidity(inteliSHA256) ||
-        request.requestedProtocols[0] !== _this.inteliConfig.wsprotocol
+        request.requestedProtocols[0] !== INTELI_PROTOCOL
       ) {
         request.reject(401); // Reject unauthaurized client
         logger.warn(

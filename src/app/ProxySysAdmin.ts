@@ -17,6 +17,7 @@ import InteliEventFactory from './inteliProtocol/InteliEventFactory';
 import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
 import getLogger from './tools/logger';
 import InteliConfig from './tools/InteliConfig';
+import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySysAdmin');
@@ -107,14 +108,14 @@ class ProxySysAdmin {
           if (this.inteliConfig.secure) {
             this.wsClient.connect(
               `wss://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              this.inteliConfig.wsprotocol,
+              INTELI_PROTOCOL,
               this.origin,
               headers
             );
           } else {
             this.wsClient.connect(
               `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-              this.inteliConfig.wsprotocol,
+              INTELI_PROTOCOL,
               this.origin,
               headers
             );

@@ -13,3 +13,5 @@ interface InteliEvent<
 }
 
 export default InteliEvent;
+
+export const INTELI_PROTOCOL = 'inteli-protocol-v1.00';

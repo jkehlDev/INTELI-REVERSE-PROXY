@@ -1,10 +1,5 @@
 {
-  "secure":false,
-  "TSLCertifacts":{
-    "certFilePath":"tsl/cert.pem",
-    "keyFilePath":"tsl/key.pem"
-  },
-  "wsprotocol": "inteli-protocol-v1.00",
+  "secure": false,
   "wsServerMount": {
     "keepalive": true,
     "keepaliveInterval": 20000,
@@ -23,6 +18,10 @@
     "closeTimeout": 500
   },
   "proxyserver": {
-    "closeTimeout": 500
+    "closeTimeout": 500,
+    "TSLCertifacts": {
+      "certFilePath": "tsl/cert.pem",
+      "keyFilePath": "tsl/key.pem"
+    }
   }
 }
