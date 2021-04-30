@@ -6,6 +6,9 @@ import {
   client as WsClient,
   IMessage,
 } from 'websocket';
+import { DEFAULT_CONFIGURATION } from '../inteli-reverse-proxy';
+import InteliConfig from './tools/InteliConfig';
+import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 import ActionsEnum from './inteliProtocol/enums/ActionsEnum';
 import EncodesEnum from './inteliProtocol/enums/EncodesEnum';
 import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
@@ -16,8 +19,7 @@ import InteliAgentSHA256, {
   InteliAgentSHA256Tools,
 } from './inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from './tools/logger';
-import InteliConfig from './tools/InteliConfig';
-import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
+
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyWebServer');
@@ -70,21 +72,21 @@ class ProxyWebServer {
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy web server (back-end web http server)
-   * @param inteliConfig - Inteli-reverse-proxy configuration
    * @param host - Inteli reverse-proxy web server host
    * @param port - Inteli reverse-proxy web server port
    * @param agentId - Inteli reverse-proxy web server identifiant
    * @param rule - Inteli reverse-proxy web server path rule (for proxy router match rules)
    * @param httpServer - Inteli reverse-proxy web server (http/https)
+   * @param inteliConfig - Inteli-reverse-proxy configuration (OPTIONNAL - SEE DEFAULT CONFIGURATION)
    * @param messageHandler - Websocket client message handler (optional)
    */
   constructor(
-    inteliConfig: InteliConfig,
     host: string,
     port: number,
     agentId: string,
     rule: string,
     httpServer: http.Server | https.Server,
+    inteliConfig: InteliConfig = DEFAULT_CONFIGURATION,
     messageHandler: (data: IMessage) => void = wsClientMessageHandler
   ) {
     try {

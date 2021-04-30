@@ -1,7 +1,5 @@
 // <== Imports externals modules
 import Yargs from 'yargs';
-import inteliConfig from './inteliProxyConfig.json';
-import InteliConfig from './app/tools/InteliConfig';
 import ProxySysAdmin from './app/ProxySysAdmin';
 import getLogger from './app/tools/logger';
 // ==>
@@ -44,10 +42,7 @@ Yargs(process.argv.slice(2))
         });
     },
     ({ id, file, origin }) => {
-      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(
-        inteliConfig as InteliConfig,
-        origin
-      );
+      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(origin);
       proxySysAdmin
         .start()
         .then(() => {
@@ -92,10 +87,7 @@ Yargs(process.argv.slice(2))
         });
     },
     ({ id, origin }) => {
-      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(
-        inteliConfig as InteliConfig,
-        origin
-      );
+      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(origin);
       proxySysAdmin
         .start()
         .then(() => {

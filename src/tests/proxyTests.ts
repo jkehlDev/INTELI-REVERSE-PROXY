@@ -1,11 +1,9 @@
 // <== Imports externals modules
 import fs from 'fs';
 import http from 'http';
-import inteliConfig from '../inteliProxyConfig.json';
-import inteliProxy from '..';
+import inteliProxy from '../inteli-reverse-proxy';
 import { InteliAgentSHA256Tools } from '../app/inteliProtocol/Authentification/InteliAgentSHA256';
 import getLogger from '../app/tools/logger';
-import InteliConfig from '../app/tools/InteliConfig';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('proxyRunTest');
@@ -17,16 +15,9 @@ function runTest() {
   ) => {
     return origin === 'localhost';
   };
-  const proxyServer = new inteliProxy.ProxyServer(
-    inteliConfig as InteliConfig,
-    checkOrigin
-  ); // NEW PROXY SERVER
-  const proxySysAdmin = new inteliProxy.ProxySysAdmin(
-    inteliConfig as InteliConfig,
-    'localhost'
-  ); // NEW PROXY SysAdmin
+  const proxyServer = new inteliProxy.ProxyServer(checkOrigin); // NEW PROXY SERVER
+  const proxySysAdmin = new inteliProxy.ProxySysAdmin('localhost'); // NEW PROXY SysAdmin
   const web001 = new inteliProxy.ProxyWebServer( // NEW WEB SERVER 001
-    inteliConfig as InteliConfig,
     'localhost',
     4242,
     'WEB001',
@@ -37,7 +28,6 @@ function runTest() {
     })
   );
   const web002 = new inteliProxy.ProxyWebServer( // NEW WEB SERVER 002
-    inteliConfig as InteliConfig,
     'localhost',
     4243,
     'WEB002',

@@ -9,7 +9,9 @@ import {
   request as Request,
   server as WsServer,
 } from 'websocket';
-/* import inteliConfig from '../inteliProxyConfig.json'; */
+import { DEFAULT_CONFIGURATION } from '../inteli-reverse-proxy';
+import InteliConfig from './tools/InteliConfig';
+import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 import InteliAgentSHA256, {
   getInteliSHA256FrmAuthorizationHeader,
   inteliSHA256CheckValidity,
@@ -20,9 +22,9 @@ import ProxySelector, { DefaultProxySelector } from './tools/ProxySelector';
 import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
 } from './tools/ProxyMsgHandler';
+
 import getLogger from './tools/logger';
-import InteliConfig from './tools/InteliConfig';
-import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
+
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -54,14 +56,14 @@ class ProxyServer {
 
   /**
    * @constructor This provide instance of Inteli-proxy server
-   * @param inteliConfig - Inteli-reverse-proxy configuration
    * @param originValidator - Callback provide origin check before accept new host connection (For CORS)
    * @param proxySelector - Instance of ProxySelector (Optionnal, DefaultProxySelector instance by default)
    * @param proxyMsgHandler - Instance of ProxyMsgHandler (Optionnal, DefaultProxySelector instance by default)
+   * @param inteliConfig - Inteli-reverse-proxy configuration (OPTIONNAL - SEE DEFAULT CONFIGURATION)
    */
   constructor(
-    inteliConfig: InteliConfig,
     originValidator: (origin: string) => Promise<boolean>,
+    inteliConfig: InteliConfig = DEFAULT_CONFIGURATION,
     proxySelector: ProxySelector = new DefaultProxySelector(),
     proxyMsgHandler: ProxyMsgHandler = new DefaultProxyMsgHandler()
   ) {

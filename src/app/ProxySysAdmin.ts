@@ -6,9 +6,12 @@ import {
   connection as Connection,
   IMessage,
 } from 'websocket';
+import { DEFAULT_CONFIGURATION } from '../inteli-reverse-proxy';
+import InteliConfig from './tools/InteliConfig';
 import InteliAgentSHA256, {
   InteliAgentSHA256Tools,
 } from './inteliProtocol/Authentification/InteliAgentSHA256';
+import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 import EncodesEnum from './inteliProtocol/enums/EncodesEnum';
 import ActionsEnum from './inteliProtocol/enums/ActionsEnum';
 import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
@@ -16,8 +19,6 @@ import TypesEnum from './inteliProtocol/enums/TypesEnum';
 import InteliEventFactory from './inteliProtocol/InteliEventFactory';
 import SysAdminEvent from './inteliProtocol/sysAdminEvent/SysAdminEvent';
 import getLogger from './tools/logger';
-import InteliConfig from './tools/InteliConfig';
-import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxySysAdmin');
@@ -47,10 +48,13 @@ class ProxySysAdmin {
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy SysAdmin client
-   * @param inteliConfig - Inteli-reverse-proxy configuration
    * @param origin Websocket client origin for server CORS check validity
+   * @param inteliConfig - Inteli-reverse-proxy configuration (OPTIONNAL - SEE DEFAULT CONFIGURATION)
    */
-  constructor(inteliConfig: InteliConfig, origin: string) {
+  constructor(
+    origin: string,
+    inteliConfig: InteliConfig = DEFAULT_CONFIGURATION
+  ) {
     try {
       this.inteliConfig = inteliConfig;
       this.origin = origin;
