@@ -33,7 +33,9 @@ enum ServerStates {
  */
 class ProxySysAdmin {
   private state: ServerStates = ServerStates.CLOSE; // Sysadmin websocket current state
-  private wsClient: WsClient = new WsClient(); // Websocket client instance
+  private wsClient: WsClient = new WsClient({
+    tlsOptions: { rejectUnauthorized: false },
+  }); // Websocket client instance
 
   private origin: string; // Websocket client origin
 
@@ -99,12 +101,21 @@ class ProxySysAdmin {
             reject(err);
           });
 
-          this.wsClient.connect(
-            `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-            inteliConfig.wsprotocol,
-            this.origin,
-            headers
-          );
+          if (inteliConfig.secure) {
+            this.wsClient.connect(
+              `wss://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
+              inteliConfig.wsprotocol,
+              this.origin,
+              headers
+            );
+          } else {
+            this.wsClient.connect(
+              `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
+              inteliConfig.wsprotocol,
+              this.origin,
+              headers
+            );
+          }
         } else {
           logger.warn(
             `Inteli reverse-proxy sysadmin connection start attempt aborded: Sysadmin is already start or in intermediate state`

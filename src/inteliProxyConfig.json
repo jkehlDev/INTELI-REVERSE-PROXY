@@ -1,4 +1,9 @@
 {
+  "secure":true,
+  "TSLCertifacts":{
+    "certFilePath":"tsl/cert.pem",
+    "keyFilePath":"tsl/key.pem"
+  },
   "wsprotocol": "inteli-protocol-v1.00",
   "wsServerMount": {
     "keepalive": true,
@@ -8,7 +13,7 @@
     "autoAcceptConnections": false,
     "closeTimeout": 5000,
     "disableNagleAlgorithm": true,
-    "ignoreXForwardedFor": true
+    "ignoreXForwardedFor": false
   },
   "webserver": {
     "version": "1.0.0",

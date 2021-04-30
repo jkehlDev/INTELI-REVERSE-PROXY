@@ -51,7 +51,9 @@ function wsClientMessageHandler(data: IMessage) {
 class ProxyWebServer {
   private state: ServerStates = ServerStates.CLOSE; // Server current state
 
-  private wsClient: WsClient = new WsClient(); // Websocket client instance
+  private wsClient: WsClient = new WsClient({
+    tlsOptions: { rejectUnauthorized: false },
+  }); // Websocket client instance
   private httpServer: http.Server | https.Server; // Http/Https server instance
 
   // Authentification agentId & signature
@@ -156,12 +158,21 @@ class ProxyWebServer {
           const headers: http.OutgoingHttpHeaders = {
             Authorization: `INTELI-SHA256 AgentId=${this.inteliAgentSHA256.agentId}, Signature=${this.inteliAgentSHA256.signature}`,
           };
-          this.wsClient.connect(
-            `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
-            inteliConfig.wsprotocol,
-            this.host,
-            headers
-          );
+          if (inteliConfig.secure) {
+            this.wsClient.connect(
+              `wss://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
+              inteliConfig.wsprotocol,
+              this.host,
+              headers
+            );
+          } else {
+            this.wsClient.connect(
+              `ws://${process.env.PROXY_WS_HOST}:${process.env.PROXY_WS_PORT}/`,
+              inteliConfig.wsprotocol,
+              this.host,
+              headers
+            );
+          }
         } else {
           logger.warn(
             `Inteli reverse-proxy web server start attempt aborded [${this.inteliAgentSHA256.agentId}]: server is already start or in intermediate state`

@@ -2,6 +2,7 @@
 import http from 'http';
 import https from 'https';
 import httpProxy from 'http-proxy';
+import fs from 'fs';
 import {
   connection as Connection,
   IMessage,
@@ -20,6 +21,7 @@ import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
 } from './tools/ProxyMsgHandler';
 import getLogger from './tools/logger';
+import { IncomingMessage } from 'node:http';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -45,7 +47,9 @@ class ProxyServer {
   private wsServer: WsServer = new WsServer(); // Websocket server instance
   private wsHttpServer: http.Server | https.Server; // Websocket http server instance
 
-  private proxyServer: httpProxy = httpProxy.createProxyServer({}); // Proxy server instance
+  private proxyServer: httpProxy = httpProxy.createProxyServer({
+    secure: inteliConfig.secure,
+  }); // Proxy server instance
   private proxyHttpServer: http.Server | https.Server; // Proxy http server instance
 
   /**
@@ -66,25 +70,42 @@ class ProxyServer {
       this.wsServer.on('request', (request: Request) => {
         this.wsServerRequestHandler(this, request);
       });
-
-      this.wsHttpServer = http.createServer();
-      this.proxyHttpServer = http.createServer(
-        async (req: http.IncomingMessage, res: http.ServerResponse) => {
-          try {
-            const host: Host = await this.proxySelector.getTargetHost(req);
-            if (host) {
-              this.proxyServer.web(req, res, { target: host.target });
-            } else {
-              res.writeHead(503, { 'Content-Type': 'text/html' });
-              res.end('Service unavailable', 'utf-8');
-            }
-          } catch (err) {
-            logger.error(err);
+      const cbProxyServer: (
+        req: http.IncomingMessage,
+        res: http.ServerResponse
+      ) => void = async (
+        req: http.IncomingMessage,
+        res: http.ServerResponse
+      ) => {
+        try {
+          const host: Host = await this.proxySelector.getTargetHost(req);
+          if (host) {
+            this.proxyServer.web(req, res, { target: host.target });
+          } else {
             res.writeHead(503, { 'Content-Type': 'text/html' });
             res.end('Service unavailable', 'utf-8');
           }
+        } catch (err) {
+          logger.error(err);
+          res.writeHead(503, { 'Content-Type': 'text/html' });
+          res.end('Service unavailable', 'utf-8');
         }
-      );
+      };
+      if (inteliConfig.secure) {
+        const options = {
+          key: fs.readFileSync(
+            `${process.cwd()}/${inteliConfig.TSLCertifacts.keyFilePath}`
+          ),
+          cert: fs.readFileSync(
+            `${process.cwd()}/${inteliConfig.TSLCertifacts.certFilePath}`
+          ),
+        };
+        this.wsHttpServer = https.createServer(options);
+        this.proxyHttpServer = https.createServer(options, cbProxyServer);
+      } else {
+        this.wsHttpServer = http.createServer();
+        this.proxyHttpServer = http.createServer(cbProxyServer);
+      }
     } catch (err) {
       logger.error(
         `An error occured during instanciation of Inteli reverse-proxy server.\nError message : ${err.message}\nStack: ${err.stack}`
