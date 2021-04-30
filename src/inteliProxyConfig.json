@@ -1,5 +1,5 @@
 {
-  "secure":true,
+  "secure":false,
   "TSLCertifacts":{
     "certFilePath":"tsl/cert.pem",
     "keyFilePath":"tsl/key.pem"

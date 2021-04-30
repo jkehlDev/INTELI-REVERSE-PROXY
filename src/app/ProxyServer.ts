@@ -21,7 +21,6 @@ import ProxyMsgHandler, {
   DefaultProxyMsgHandler,
 } from './tools/ProxyMsgHandler';
 import getLogger from './tools/logger';
-import { IncomingMessage } from 'node:http';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyServer');
@@ -63,6 +62,11 @@ class ProxyServer {
     proxySelector: ProxySelector = new DefaultProxySelector(),
     proxyMsgHandler: ProxyMsgHandler = new DefaultProxyMsgHandler()
   ) {
+    logger.info(
+      `Inteli Proxy Server secure mode (TSL) [${
+        inteliConfig.secure ? 'ENABLE' : 'DISABLE'
+      }].`
+    );
     this.originValidator = async (origin) => await originValidator(origin);
     this.proxySelector = proxySelector;
     this.proxyMsgHandler = proxyMsgHandler;
