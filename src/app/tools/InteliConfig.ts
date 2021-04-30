@@ -19,9 +19,5 @@ export default interface InteliConfig {
   };
   proxyserver: {
     closeTimeout: number;
-    TSLCertifacts: {
-      certFilePath: string;
-      keyFilePath: string;
-    };
   };
 }

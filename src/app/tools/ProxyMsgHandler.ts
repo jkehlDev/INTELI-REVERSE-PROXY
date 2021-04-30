@@ -90,6 +90,13 @@ export default abstract class ProxyMsgHandler {
             );
             resolve(ResolveStatesEnum.VALID);
             break;
+          case ActionsEnum.stopproxy:
+            logger.info(
+              `Sysadmin stop proxy request received.`
+            );
+            // TODO STOP PROXY ACTION
+            resolve(ResolveStatesEnum.VALID);
+            break;
           default:
             resolve(ResolveStatesEnum.INVALID);
             break;

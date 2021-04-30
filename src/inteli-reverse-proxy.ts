@@ -51,9 +51,5 @@ export const DEFAULT_CONFIGURATION: InteliConfig = {
   },
   proxyserver: {
     closeTimeout: 500,
-    TSLCertifacts: {
-      certFilePath: 'tsl/cert.pem',
-      keyFilePath: 'tsl/key.pem',
-    },
   },
 };

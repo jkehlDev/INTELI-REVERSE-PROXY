@@ -43,7 +43,7 @@ class EventFactory {
     };
   }
   static makeSysAdminEvent(
-    action: ActionsEnum.add | ActionsEnum.remove,
+    action: ActionsEnum.add | ActionsEnum.remove | ActionsEnum.stopproxy,
     inteliAgentSHA256: InteliAgentSHA256,
     payload: TargetCert
   ): Readonly<SysAdminEvent> {

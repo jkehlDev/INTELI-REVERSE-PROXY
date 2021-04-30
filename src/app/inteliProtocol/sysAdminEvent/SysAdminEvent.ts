@@ -8,7 +8,7 @@ import TargetCert from './TargetCert';
 interface SysAdminEvent
   extends InteliEvent<
     TypesEnum.sysadmin,
-    ActionsEnum.add | ActionsEnum.remove,
+    ActionsEnum.add | ActionsEnum.remove | ActionsEnum.stopproxy,
     InteliAgentSHA256,
     TargetCert
   > {}

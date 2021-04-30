@@ -124,15 +124,9 @@ class ProxyServer {
       };
       if (inteliConfig.secure) {
         const options = {
-          key: fs.readFileSync(
-            `${process.cwd()}/${
-              inteliConfig.proxyserver.TSLCertifacts.keyFilePath
-            }`
-          ),
+          key: fs.readFileSync(`${process.cwd()}/${process.env.PROXY_TSL_KEY}`),
           cert: fs.readFileSync(
-            `${process.cwd()}/${
-              inteliConfig.proxyserver.TSLCertifacts.certFilePath
-            }`
+            `${process.cwd()}/${process.env.PROXY_TSL_CERT}`
           ),
         };
         this.wsHttpServer = https.createServer(options);
