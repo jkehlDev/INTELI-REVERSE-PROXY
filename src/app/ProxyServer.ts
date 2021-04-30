@@ -90,7 +90,7 @@ class ProxyServer {
               {
                 target: {
                   ...host.target,
-                  protocol: inteliConfig ? 'https:' : 'http:',
+                  protocol: inteliConfig.secure ? 'https:' : 'http:',
                 },
               },
               (err) => {

@@ -53,21 +53,25 @@ export class DefaultProxySelector extends ProxySelector {
             const bestRule = getBestMatchRule(req.url, hosts);
             hosts = hosts
               .filter((host) => host.rule === bestRule)
-              .sort((host1, host2) => compareint(host1.use, host2.use));
+              .sort((host1, host2) =>
+                compareint(host1.options.use, host2.options.use)
+              );
             if (hosts.length > 0) {
-              const hostsFiltered = hosts.filter((host) => !host.pending);
+              const hostsFiltered = hosts.filter(
+                (host) => !host.options.pending
+              );
               if (hostsFiltered.length === 0) {
                 hosts.forEach((host) => {
-                  host.pending = false;
+                  host.options.pending = false;
                 });
                 host = hosts.shift();
               } else {
                 host = hostsFiltered.shift();
               }
-              const countFrom: number = host.use;
-              host.use = (host.use + 1) % 100;
-              if (host.use < countFrom) {
-                host.pending = true;
+              const countFrom: number = host.options.use;
+              host.options.use = (host.options.use + 1) % 100;
+              if (host.options.use < countFrom) {
+                host.options.pending = true;
               }
             }
           }
@@ -85,8 +89,7 @@ export class DefaultProxySelector extends ProxySelector {
     return new Promise((resolve, reject) => {
       try {
         if (!this.hostsMap.has(key)) {
-          host.use = 0;
-          host.pending = false;
+          host.options = { use: 0, pending: false };
           this.hostsMap.set(key, host);
           this.conTbl.push(key);
         }
