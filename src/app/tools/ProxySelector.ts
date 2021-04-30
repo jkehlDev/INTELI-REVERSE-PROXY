@@ -46,22 +46,35 @@ export class DefaultProxySelector extends ProxySelector {
       try {
         let host: Host = undefined;
         if (this.conTbl.length > 0) {
-          const hosts: Host[] = this.conTbl
+          let hosts: Host[] = this.conTbl
             .filter((con) => this.hostsMap.has(con))
             .map((con) => this.hostsMap.get(con));
           if (hosts.length > 0) {
             const bestRule = getBestMatchRule(req.url, hosts);
-            host = hosts
+            hosts = hosts
               .filter((host) => host.rule === bestRule)
-              .sort((host1, host2) => compareint(host1.use, host2.use))
-              .shift();
+              .sort((host1, host2) => compareint(host1.use, host2.use));
+            if (hosts.length > 0) {
+              const hostsFiltered = hosts.filter((host) => !host.pending);
+              if (hostsFiltered.length === 0) {
+                hosts.forEach((host) => {
+                  host.pending = false;
+                });
+                host = hosts.shift();
+              } else {
+                host = hostsFiltered.shift();
+              }
+              const countFrom: number = host.use;
+              host.use = (host.use + 1) % 100;
+              if (host.use < countFrom) {
+                host.pending = true;
+              }
+            }
           }
-        }
-        if (host) {
-          host.use = (host.use + 1) % 100;
         }
         resolve(host);
       } catch (err) {
+        logger.error(err);
         reject(err);
       }
     });
@@ -71,6 +84,7 @@ export class DefaultProxySelector extends ProxySelector {
       try {
         if (!this.hostsMap.has(key)) {
           host.use = 0;
+          host.pending = false;
           this.hostsMap.set(key, host);
           this.conTbl.push(key);
         }
