@@ -1,8 +1,15 @@
 // <== Imports externals modules
 import dotenv from 'dotenv';
-import getLogger from './app/tools/logger';
-// LOGGER INSTANCE
-const logger = getLogger('InteliProxy');
+// Load environnement parameters
+const result = dotenv.config();
+if (result.error) {
+  console.error(
+    `[${Date.now()}, error, Inteli-reverse-proxy index] Error append during environnement parameters loading.\nError message : ${
+      result.error.message
+    }\nStack: ${result.error.stack}`
+  );
+  throw result.error;
+}
 
 /**
  * @module Inteli-reverse-proxy
@@ -10,15 +17,6 @@ const logger = getLogger('InteliProxy');
  * @version 1.00
  * @author Armandine, Johann, Thibaud
  */
-
-// Load environnement parameters
-const result = dotenv.config();
-if (result.error) {
-  logger.error(
-    `Error append during environnement parameters loading.\nError message : ${result.error.message}\nStack: ${result.error.stack}`
-  );
-  throw result.error;
-}
 
 // Provide ProxyServer Class
 import ProxyServer from './app/ProxyServer';
