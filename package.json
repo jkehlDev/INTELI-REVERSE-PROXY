@@ -1,5 +1,5 @@
 {
-  "name": "inteli-reverseproxy",
+  "name": "inteli-reverse-proxy",
   "version": "1.0.0",
   "description": "It is a reverse proxy that provides load balancer and dynamic server allocation with websocket broadcast between the server and the reverse proxy.",
   "main": "index.js",
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jkehlDev/INTELI-REVERSEPROXY.git"
+    "url": "git+https://github.com/jkehlDev/INTELI-REVERSE-PROXY.git"
   },
   "author": "jkehlDev",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/jkehlDev/INTELI-REVERSEPROXY/issues"
+    "url": "https://github.com/jkehlDev/INTELI-REVERSE-PROXY/issues"
   },
-  "homepage": "https://github.com/jkehlDev/INTELI-REVERSEPROXY#readme",
+  "homepage": "https://github.com/jkehlDev/INTELI-REVERSE-PROXY#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
