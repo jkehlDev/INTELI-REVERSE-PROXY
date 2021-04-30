@@ -43,10 +43,10 @@ function runTest() {
       proxySysAdmin // ADD CERT PUBLIC KEY TO CERT STORE
         .start()
         .then(() =>
-          proxySysAdmin.addPublicKey('WEB001', 'WEB001_publicKey.pem')
+          proxySysAdmin.addPublicKey('WEB001', 'src/tests/WEB001_publicKey.pem')
         )
         .then(() =>
-          proxySysAdmin.addPublicKey('WEB002', 'WEB002_publicKey.pem')
+          proxySysAdmin.addPublicKey('WEB002', 'src/tests/WEB002_publicKey.pem')
         )
         .catch((err) => {
           logger.error(err.message);

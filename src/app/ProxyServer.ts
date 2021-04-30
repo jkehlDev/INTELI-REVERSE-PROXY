@@ -35,6 +35,9 @@ enum ServerStates {
   OPEN,
 }
 
+const PROXY_TSL_KEY: string = process.env.PROXY_TSL_KEY || 'tsl/key.pem';
+const PROXY_TSL_CERT: string = process.env.PROXY_TSL_CERT || 'tsl/cert.pem';
+
 /**
  * @class ProxyServer - This provide an Inteli-reverse-proxy server class
  * @version 1.00
@@ -124,10 +127,8 @@ class ProxyServer {
       };
       if (inteliConfig.secure) {
         const options = {
-          key: fs.readFileSync(`${process.cwd()}/${process.env.PROXY_TSL_KEY}`),
-          cert: fs.readFileSync(
-            `${process.cwd()}/${process.env.PROXY_TSL_CERT}`
-          ),
+          key: fs.readFileSync(`${process.cwd()}/${PROXY_TSL_KEY}`),
+          cert: fs.readFileSync(`${process.cwd()}/${PROXY_TSL_CERT}`),
         };
         this.wsHttpServer = https.createServer(options);
         this.proxyHttpServer = https.createServer(options, cbProxyServer);
@@ -277,14 +278,14 @@ class ProxyServer {
       ) {
         request.reject(401); // Reject unauthaurized client
         logger.warn(
-          `New websocket client connection REJECTED from [${request.origin}].\nAuthorization : <${request.httpRequest.headers.authorization}>`
+          `New websocket client connection REJECTED from [${request.origin}] protocol [${request.requestedProtocols[0]}].\nAuthorization : <${request.httpRequest.headers.authorization}>`
         );
         return;
       }
     } catch (err) {
       request.reject(401); // Reject client if an error append
-      logger.warn(
-        `New websocket client connection REJECTED from [${request.origin}].\nAuthorization : <${request.httpRequest.headers.authorization}>`
+      logger.error(
+        `New websocket client connection REJECTED from [${request.origin}]  protocol [${request.requestedProtocols[0]}].\nAuthorization : <${request.httpRequest.headers.authorization}>\nError message : ${err.message}\nStack: ${err.stack}`
       );
       return;
     }

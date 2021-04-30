@@ -14,7 +14,8 @@ import getLogger from './logger';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyMsgHandler');
-
+const PROXY_ENCRYPT_CERTSTORE: string =
+  process.env.PROXY_ENCRYPT_CERTSTORE || 'certstore';
 export default abstract class ProxyMsgHandler {
   /**
    * @method ProxyMsgHandler#wsCliMessageHandler WS connection message event handler
@@ -71,10 +72,10 @@ export default abstract class ProxyMsgHandler {
         switch (event.header.action) {
           case ActionsEnum.add:
             logger.info(
-              `Sysadmin add public certificat to [${process.env.PROXY_ENCRYPT_CERTSTOR} ]event received for agentID:[${event.payload.hostId}].`
+              `Sysadmin add public certificat to [${PROXY_ENCRYPT_CERTSTORE}]event received for agentID:[${event.payload.hostId}].`
             );
             fs.writeFileSync(
-              `${process.cwd()}/${process.env.PROXY_ENCRYPT_CERTSTOR}/${
+              `${process.cwd()}/${PROXY_ENCRYPT_CERTSTORE}/${
                 event.payload.hostId
               }_publicKey.pem`,
               event.payload.publicKey
@@ -83,10 +84,10 @@ export default abstract class ProxyMsgHandler {
             break;
           case ActionsEnum.remove:
             logger.info(
-              `Sysadmin remove public certificat from [${process.env.PROXY_ENCRYPT_CERTSTOR}] event received for agentID:[${event.payload.hostId}].`
+              `Sysadmin remove public certificat from [${PROXY_ENCRYPT_CERTSTORE}] event received for agentID:[${event.payload.hostId}].`
             );
             fs.rmSync(
-              `${process.cwd()}/${process.env.PROXY_ENCRYPT_CERTSTOR}/${
+              `${process.cwd()}/${PROXY_ENCRYPT_CERTSTORE}/${
                 event.payload.hostId
               }_publicKey.pem`
             );

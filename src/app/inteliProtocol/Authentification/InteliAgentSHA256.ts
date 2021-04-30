@@ -12,6 +12,10 @@ import getLogger from '../../tools/logger';
 // LOGGER INSTANCE
 const logger = getLogger('InteliSHA256Factory');
 
+const PROXY_ENCRYPT_PRIVATE: string = process.env.PROXY_ENCRYPT_PRIVATE || '.';
+const PROXY_ENCRYPT_CERTSTORE: string =
+  process.env.PROXY_ENCRYPT_CERTSTORE || 'certstore';
+
 export default interface InteliAgentSHA256 {
   agentId?: string | 'sysadmin';
   signature?: string;
@@ -27,17 +31,13 @@ export class InteliAgentSHA256Tools {
       });
       // Write private key
       fs.writeFile(
-        `${process.cwd()}/${
-          process.env.PROXY_ENCRYPT_PRIVATE
-        }/${agentId}_privateKey.pem`,
+        `${process.cwd()}/${PROXY_ENCRYPT_PRIVATE}/${agentId}_privateKey.pem`,
         privateKey,
         (err) => {
           if (err) reject(err);
           // Write public key
           fs.writeFile(
-            `${process.cwd()}/${
-              process.env.PROXY_ENCRYPT_PRIVATE
-            }/${agentId}_publicKey.pem`,
+            `${process.cwd()}/${PROXY_ENCRYPT_PRIVATE}/${agentId}_publicKey.pem`,
             publicKey,
             (err) => {
               if (err) reject(err);
@@ -52,20 +52,14 @@ export class InteliAgentSHA256Tools {
   public static makeInteliAgentSHA256(agentId: string): InteliAgentSHA256 {
     if (
       !fs.existsSync(
-        `${process.cwd()}/${
-          process.env.PROXY_ENCRYPT_PRIVATE
-        }/${agentId}_privateKey.pem`
+        `${process.cwd()}/${PROXY_ENCRYPT_PRIVATE}/${agentId}_privateKey.pem`
       )
     ) {
       logger.error(
-        `Agent RSA private key not found at ${process.cwd()}/${
-          process.env.PROXY_ENCRYPT_PRIVATE
-        }/${agentId}_privateKey.pem`
+        `Agent RSA private key not found at ${process.cwd()}/${PROXY_ENCRYPT_PRIVATE}/${agentId}_privateKey.pem`
       );
       throw new Error(
-        `ERROR - [${new Date()}] Agent RSA private key not found at ${process.cwd()}/${
-          process.env.PROXY_ENCRYPT_PRIVATE
-        }/${agentId}_privateKey.pem`
+        `ERROR - [${new Date()}] Agent RSA private key not found at ${process.cwd()}/${PROXY_ENCRYPT_PRIVATE}/${agentId}_privateKey.pem`
       );
     }
 
@@ -76,9 +70,7 @@ export class InteliAgentSHA256Tools {
 
     // Read private key
     const privateKey: Buffer = fs.readFileSync(
-      `${process.cwd()}/${
-        process.env.PROXY_ENCRYPT_PRIVATE
-      }/${agentId}_privateKey.pem`
+      `${process.cwd()}/${PROXY_ENCRYPT_PRIVATE}/${agentId}_privateKey.pem`
     );
 
     // Make InteliSHA256
@@ -94,20 +86,20 @@ export function inteliSHA256CheckValidity(
 ): boolean {
   if (
     !fs.existsSync(
-      `${process.cwd()}/${process.env.PROXY_ENCRYPT_CERTSTOR}/${
+      `${process.cwd()}/${PROXY_ENCRYPT_CERTSTORE}/${
         inteliSHA256.agentId
       }_publicKey.pem`
     )
   ) {
     logger.error(
-      `Agent RSA public key not found at ${process.cwd()}/${
-        process.env.PROXY_ENCRYPT_CERTSTOR
-      }/${inteliSHA256.agentId}_publicKey.pem`
+      `Agent RSA public key not found at ${process.cwd()}/${PROXY_ENCRYPT_CERTSTORE}/${
+        inteliSHA256.agentId
+      }_publicKey.pem`
     );
     throw new Error(
-      `ERROR - [${new Date()}] Agent RSA public key not found at ${process.cwd()}/${
-        process.env.PROXY_ENCRYPT_CERTSTOR
-      }/${inteliSHA256.agentId}_publicKey.pem`
+      `ERROR - [${new Date()}] Agent RSA public key not found at ${process.cwd()}/${PROXY_ENCRYPT_CERTSTORE}/${
+        inteliSHA256.agentId
+      }_publicKey.pem`
     );
   }
 
@@ -118,11 +110,10 @@ export function inteliSHA256CheckValidity(
 
   // Read public key
   const publicKey: Buffer = fs.readFileSync(
-    `${process.cwd()}/${process.env.PROXY_ENCRYPT_CERTSTOR}/${
+    `${process.cwd()}/${PROXY_ENCRYPT_CERTSTORE}/${
       inteliSHA256.agentId
     }_publicKey.pem`
   );
-
   return cryptoVerify.verify(publicKey, inteliSHA256.signature, 'hex');
 }
 

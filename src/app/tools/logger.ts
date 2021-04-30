@@ -6,8 +6,8 @@ const defaultFormat = printf(({ level, message, label, timestamp }) => {
   return `[${timestamp}, ${level}, ${label}] ${message}`;
 });
 
-const sysoutFileName: string = process.env.PROXY_LOGGER_SYSOUT || 'sysOut';
-const syserrFileName: string = process.env.PROXY_LOGGER_SYSERR || 'sysErr';
+const sysoutFileName: string = process.env.PROXY_LOGGER_SYSOUT || 'sysOut.log';
+const syserrFileName: string = process.env.PROXY_LOGGER_SYSERR || 'sysErr.log';
 
 function getLogger(origin: string): Logger {
   const logger = createLogger({
@@ -20,10 +20,10 @@ function getLogger(origin: string): Logger {
     ),
     transports: [
       new transports.File({
-        filename: `${sysoutFileName}.log`,
+        filename: `${process.cwd()}/${syserrFileName}`,
         level: 'error',
       }),
-      new transports.File({ filename: `${syserrFileName}.log` }),
+      new transports.File({ filename: `${process.cwd()}/${sysoutFileName}` }),
     ],
   });
   if (process.env.NODE_ENV !== 'production') {
