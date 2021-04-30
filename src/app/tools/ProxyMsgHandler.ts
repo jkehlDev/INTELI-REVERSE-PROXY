@@ -71,10 +71,10 @@ export default abstract class ProxyMsgHandler {
         switch (event.header.action) {
           case ActionsEnum.add:
             logger.info(
-              `Sysadmin add public certificat to certstore event received for agentID:[${event.payload.hostId}].`
+              `Sysadmin add public certificat to [${process.env.PROXY_ENCRYPT_CERTSTOR} ]event received for agentID:[${event.payload.hostId}].`
             );
             fs.writeFileSync(
-              `${process.cwd()}/certstore/${
+              `${process.cwd()}/${process.env.PROXY_ENCRYPT_CERTSTOR}/${
                 event.payload.hostId
               }_publicKey.pem`,
               event.payload.publicKey
@@ -83,17 +83,17 @@ export default abstract class ProxyMsgHandler {
             break;
           case ActionsEnum.remove:
             logger.info(
-              `Sysadmin remove public certificat from certstore event received for agentID:[${event.payload.hostId}].`
+              `Sysadmin remove public certificat from [${process.env.PROXY_ENCRYPT_CERTSTOR}] event received for agentID:[${event.payload.hostId}].`
             );
             fs.rmSync(
-              `${process.cwd()}/certstore/${event.payload.hostId}_publicKey.pem`
+              `${process.cwd()}/${process.env.PROXY_ENCRYPT_CERTSTOR}/${
+                event.payload.hostId
+              }_publicKey.pem`
             );
             resolve(ResolveStatesEnum.VALID);
             break;
           case ActionsEnum.stopproxy:
-            logger.info(
-              `Sysadmin stop proxy request received.`
-            );
+            logger.info(`Sysadmin stop proxy request received.`);
             // TODO STOP PROXY ACTION
             resolve(ResolveStatesEnum.VALID);
             break;
