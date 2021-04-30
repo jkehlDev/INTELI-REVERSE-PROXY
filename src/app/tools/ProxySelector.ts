@@ -74,7 +74,9 @@ export class DefaultProxySelector extends ProxySelector {
         }
         resolve(host);
       } catch (err) {
-        logger.error(err);
+        logger.error(
+          `An error occured during getTargetHost.\nError message : ${err.message}\nStack: ${err.stack}`
+        );
         reject(err);
       }
     });

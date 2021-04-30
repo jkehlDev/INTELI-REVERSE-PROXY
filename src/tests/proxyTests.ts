@@ -49,7 +49,7 @@ function runTest() {
           proxySysAdmin.addPublicKey('WEB002', 'WEB002_publicKey.pem')
         )
         .catch((err) => {
-          logger.error(err);
+          logger.error(err.message);
         });
       setTimeout(() => {
         web001 // START WEB SERVER
@@ -60,19 +60,19 @@ function runTest() {
                 web001 // STOP WEB SERVER
                   .stop()
                   .catch((err) => {
-                    logger.error(err);
+                    logger.error(err.message);
                   })
                   .finally(() => {
                     // REMOVE CERT PUBLIC KEY FROM CERT STORE
                     proxySysAdmin.removePublicKey('WEB001').catch((err) => {
-                      logger.error(err);
+                      logger.error(err.message);
                     });
                   });
               }, 30000);
             }
           })
           .catch((err) => {
-            logger.error(err);
+            logger.error(err.message);
           });
       }, 2500);
 
@@ -85,26 +85,26 @@ function runTest() {
                 web002 // STOP WEB SERVER
                   .stop()
                   .catch((err) => {
-                    logger.error(err);
+                    logger.error(err.message);
                   })
                   .finally(() => {
                     // REMOVE CERT PUBLIC KEY FROM CERT STORE
                     proxySysAdmin.removePublicKey('WEB002').catch((err) => {
-                      logger.error(err);
+                      logger.error(err.message);
                     });
                   });
               }, 40000);
             }
           })
           .catch((err) => {
-            logger.error(err);
+            logger.error(err.message);
           });
       }, 5000);
 
       setTimeout(() => {
         proxyServer.stop().catch((err) => {
           // STOP PROXY
-          logger.error(err);
+          logger.error(err.message);
         });
       }, 60000);
     }
@@ -118,5 +118,5 @@ try {
     runTest();
   }
 } catch (err) {
-  logger.error(err);
+  logger.error(err.message);
 }

@@ -15,7 +15,7 @@ const logger = getLogger('InteliProxy');
 const result = dotenv.config();
 if (result.error) {
   logger.error(
-    `Error append during environnement parameters loading, ${result.error.message}`
+    `Error append during environnement parameters loading.\nError message : ${result.error.message}\nStack: ${result.error.stack}`
   );
   throw result.error;
 }

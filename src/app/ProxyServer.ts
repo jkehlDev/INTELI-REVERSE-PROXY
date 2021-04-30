@@ -338,14 +338,18 @@ class ProxyServer {
           }
         })
         .catch((err) => {
-          logger.error(err);
+          logger.error(
+            `Error append when receiving client message.\nError message : ${err.message}\nStack: ${err.stack}`
+          );
           connection.close(
             Connection.CLOSE_REASON_INVALID_DATA,
             'INVALID DATA'
           );
         });
     } catch (err) {
-      logger.error(err);
+      logger.error(
+        `Error append when receiving client message.\nError message : ${err.message}\nStack: ${err.stack}`
+      );
       connection.close(Connection.CLOSE_REASON_INVALID_DATA, 'INVALID DATA');
     }
   }

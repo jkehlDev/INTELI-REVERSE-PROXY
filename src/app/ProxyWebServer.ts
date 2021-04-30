@@ -180,7 +180,9 @@ class ProxyWebServer {
           resolve(false);
         }
       } catch (err) {
-        logger.error(`[${this.inteliAgentSHA256.agentId}] Error\n${err}`);
+        logger.error(
+          `Error append on websocket client start [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
+        );
         reject(err);
       }
     });
@@ -246,7 +248,9 @@ class ProxyWebServer {
           resolve(false);
         }
       } catch (err) {
-        logger.error(`[${this.inteliAgentSHA256.agentId}] Error\n${err}`);
+        logger.error(
+          `Error append on websocket client stop [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
+        );
         reject(err);
       }
     });
@@ -277,7 +281,9 @@ class ProxyWebServer {
    * @param err Error send by server
    */
   private wsClientErrorHandler(_this: ProxyWebServer, err: Error) {
-    logger.error(`[${this.inteliAgentSHA256.agentId}] Error\n${err}`);
+    logger.error(
+      `Error append on websocket client [${this.inteliAgentSHA256.agentId}].\nError message : ${err.message}\nStack: ${err.stack}`
+    );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
     }

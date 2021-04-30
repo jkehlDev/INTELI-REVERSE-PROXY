@@ -7,7 +7,7 @@ import getLogger from './app/tools/logger';
 const logger = getLogger('InteliSysAdmin');
 
 /**
- * @module inteliSysAdmin Provide a proxy sysadmin console commande line 
+ * @module inteliSysAdmin Provide a proxy sysadmin console commande line
  * @version 1.0.0
  * @description Execute module with node and get command help
  */
@@ -49,12 +49,15 @@ Yargs(process.argv.slice(2))
           proxySysAdmin.addPublicKey(id, file);
         })
         .catch((err) => {
-          logger.error(`Cannot send adding request to proxy server`);
-          logger.error(err);
+          logger.error(
+            `Cannot send adding request to proxy server.\nError message : ${err.message}\nStack: ${err.stack}`
+          );
         })
         .finally(() => {
           proxySysAdmin.stop().catch((err) => {
-            logger.error(err);
+            logger.error(
+              `Error append when proxySysAdmin stop.\nError message : ${err.message}\nStack: ${err.stack}`
+            );
           });
         });
     }
@@ -91,12 +94,15 @@ Yargs(process.argv.slice(2))
           proxySysAdmin.removePublicKey(id);
         })
         .catch((err) => {
-          logger.error(`Cannot send remove request to proxy server`);
-          logger.error(err);
+          logger.error(
+            `Cannot send remove request to proxy server.\nError message : ${err.message}\nStack: ${err.stack}`
+          );
         })
         .finally(() => {
           proxySysAdmin.stop().catch((err) => {
-            logger.error(err);
+            logger.error(
+              `Error append when proxySysAdmin stop.\nError message : ${err.message}\nStack: ${err.stack}`
+            );
           });
         });
     }

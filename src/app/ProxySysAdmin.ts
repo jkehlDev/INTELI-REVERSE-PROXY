@@ -210,7 +210,9 @@ class ProxySysAdmin {
    * @param err Error send by server
    */
   private wsClientErrorHandler(_this: ProxySysAdmin, err: Error) {
-    logger.error(err);
+    logger.error(
+      `Error append on websocket client.\nError message : ${err.message}\nStack: ${err.stack}`
+    );
     if (_this.state === ServerStates.OPEN) {
       _this.stop();
     }
