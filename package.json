@@ -15,6 +15,11 @@
   "bugs": {
     "url": "https://github.com/jkehlDev/INTELI-REVERSE-PROXY/issues"
   },
+  "keywords": [
+    "proxy",
+    "reverse-proxy",
+    "load-balancer"
+  ],
   "homepage": "https://github.com/jkehlDev/INTELI-REVERSE-PROXY#readme",
   "dependencies": {
     "dotenv": "^8.2.0",

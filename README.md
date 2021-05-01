@@ -82,12 +82,13 @@ PROXY_LOGGER_SYSERR=sysErr
 Prepare an Inteli configuration object.
 `DEFAULT_CONFIGURATION` example :
 
+[See websocket module server mounting options](https://github.com/theturtle32/WebSocket-Node/blob/a2cd3065167668a9685db0d5f9c4083e8a1839f0/docs/WebSocketServer.md#server-config-options)
+
 ```js
 import { InteliConfig } from 'inteli-reverse-proxy';
 const DEFAULT_CONFIGURATION: InteliConfig = {
   secure: true, // TSL MODE ENABLE WHEN secure at true
   wsServerMount: {
-    // See websocket module server mounting options
     keepalive: true,
     keepaliveInterval: 20000,
     dropConnectionOnKeepaliveTimeout: true,
