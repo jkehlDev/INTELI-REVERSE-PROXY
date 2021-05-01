@@ -77,8 +77,8 @@ class ProxyWebServer {
    * @param agentId - Inteli reverse-proxy web server identifiant
    * @param rule - Inteli reverse-proxy web server path rule (for proxy router match rules)
    * @param httpServer - Inteli reverse-proxy web server (http/https)
-   * @param inteliConfig - Inteli-reverse-proxy configuration (OPTIONNAL - SEE DEFAULT CONFIGURATION)
-   * @param messageHandler - Websocket client message handler (optional)
+   * @param inteliConfig - Inteli-reverse-proxy configuration (Optional, SEE DEFAULT CONFIGURATION)
+   * @param messageHandler - Websocket client message handler (Optional)
    */
   constructor(
     host: string,

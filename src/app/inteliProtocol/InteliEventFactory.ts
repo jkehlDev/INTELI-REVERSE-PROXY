@@ -13,7 +13,7 @@ class EventFactory {
     action: string,
     inteliAgentSHA256: InteliAgentSHA256,
     payload: any
-  ): Readonly<InteliEvent<string, string, InteliAgentSHA256, any>> {
+  ): Readonly<InteliEvent<string, string, any>> {
     return {
       header: { type, action },
       authentification: inteliAgentSHA256,

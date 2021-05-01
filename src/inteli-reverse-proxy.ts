@@ -18,18 +18,20 @@ if (result.error) {
  * @author Armandine, Johann, Thibaud
  */
 
-// Provide ProxyServer Class
-import ProxyServer from './app/ProxyServer';
-
-// Provide ProxyWebServer Class
-import ProxyWebServer from './app/ProxyWebServer';
-
-// Provide ProxySysAdmin Class
-import ProxySysAdmin from './app/ProxySysAdmin';
-import InteliConfig from 'app/tools/InteliConfig';
-
 // Exports
-export default { ProxyServer, ProxyWebServer, ProxySysAdmin };
+export * as ProxyServer from './app/ProxyServer';
+export * as ProxyWebServer from './app/ProxyWebServer';
+export * as ProxySysAdmin from './app/ProxySysAdmin';
+export * as InteliConfig from './app/tools/InteliConfig';
+export * as ProxyMsgHandler from './app/tools/ProxyMsgHandler';
+export * as ProxySelector from './app/tools/ProxySelector';
+export * as InteliLogger from './app/tools/logger';
+export * as InteliAuth from './app/inteliProtocol/Authentification/InteliAgentSHA256';
+export * as InteliEvent from './app/inteliProtocol/InteliEvent';
+export * as InteliEventFactory from './app/inteliProtocol/InteliEventFactory';
+export * as ResolveStatesEnum from './app/inteliProtocol/enums/ResolveStatesEnum';
+
+import InteliConfig from './app/tools/InteliConfig';
 export const DEFAULT_CONFIGURATION: InteliConfig = {
   secure: false,
   wsServerMount: {

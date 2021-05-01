@@ -17,7 +17,7 @@ const PROXY_ENCRYPT_CERTSTORE: string =
   process.env.PROXY_ENCRYPT_CERTSTORE || 'certstore';
 
 export default interface InteliAgentSHA256 {
-  agentId?: string | 'sysadmin';
+  agentId?: string;
   signature?: string;
 }
 export class InteliAgentSHA256Tools {

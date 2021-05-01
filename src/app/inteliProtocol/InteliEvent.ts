@@ -1,14 +1,11 @@
-interface InteliEvent<
-  Type extends string,
-  Action extends string,
-  Auth,
-  Payload
-> {
+import InteliAgentSHA256 from './Authentification/InteliAgentSHA256';
+
+interface InteliEvent<Type extends string, Action extends string, Payload> {
   header: {
     type: Type;
     action: Action;
   };
-  authentification: Auth;
+  authentification: InteliAgentSHA256;
   payload: Payload;
 }
 

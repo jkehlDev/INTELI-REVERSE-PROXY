@@ -32,12 +32,9 @@ export default abstract class ProxyMsgHandler {
     return new Promise((resolve, reject) => {
       try {
         if ((data.type = EncodesEnum.utf8)) {
-          const event: InteliEvent<
-            TypesEnum,
-            ActionsEnum,
-            any,
-            any
-          > = JSON.parse(data.utf8Data);
+          const event: InteliEvent<string, string, any> = JSON.parse(
+            data.utf8Data
+          );
           if (inteliSHA256CheckValidity(event.authentification)) {
             switch (event.header.type) {
               case TypesEnum.sysadmin:
@@ -141,14 +138,14 @@ export default abstract class ProxyMsgHandler {
   abstract resolvePersonalizedMsg(
     connection: Connection,
     proxySelector: ProxySelector,
-    event: InteliEvent<TypesEnum, ActionsEnum, any, any>
+    event: InteliEvent<string, string, any>
   ): Promise<ResolveStatesEnum>;
 }
 export class DefaultProxyMsgHandler extends ProxyMsgHandler {
   resolvePersonalizedMsg(
     connection: Connection,
     proxySelector: ProxySelector,
-    event: InteliEvent<TypesEnum, ActionsEnum, any, any>
+    event: InteliEvent<string, string, any>
   ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, rejects) => {
       resolve(ResolveStatesEnum.INVALID);

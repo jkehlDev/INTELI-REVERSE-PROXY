@@ -1,10 +1,10 @@
 // <== Imports externals modules
 import Yargs from 'yargs';
-import ProxySysAdmin from './app/ProxySysAdmin';
-import getLogger from './app/tools/logger';
+import { ProxySysAdmin, InteliLogger } from './inteli-reverse-proxy';
+
 // ==>
 // LOGGER INSTANCE
-const logger = getLogger('InteliSysAdmin');
+const logger = InteliLogger.default('InteliSysAdmin');
 
 /**
  * @module inteliSysAdmin Provide a proxy sysadmin console commande line
@@ -42,7 +42,9 @@ Yargs(process.argv.slice(2))
         });
     },
     ({ id, file, origin }) => {
-      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(origin);
+      const proxySysAdmin: ProxySysAdmin.default = new ProxySysAdmin.default(
+        origin
+      );
       proxySysAdmin
         .start()
         .then(() => {
@@ -87,7 +89,9 @@ Yargs(process.argv.slice(2))
         });
     },
     ({ id, origin }) => {
-      const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin(origin);
+      const proxySysAdmin: ProxySysAdmin.default = new ProxySysAdmin.default(
+        origin
+      );
       proxySysAdmin
         .start()
         .then(() => {
