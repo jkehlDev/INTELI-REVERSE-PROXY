@@ -128,7 +128,6 @@ A new Inteli reverse-proxy is created by calling `ProxyServer` and passing :
 
 ```ts
 import { ProxyServer } from 'inteli-reverse-proxy';
-// TEST Inteli proxy start and stop with delay
 const checkOrigin: (origin: string) => Promise<boolean> = async (
   origin: string
 ) => {
