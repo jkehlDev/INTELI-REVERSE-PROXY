@@ -53,6 +53,7 @@ A system adminstration independant module give to sysadmin functions to upload o
   - [Inteli reverse-proxy server instance](#Inteli-reverse-proxy-server-instance)
   - [Inteli web server instance](#Inteli-web-server-instance)
   - [Inteli sysadmin tool](#Inteli-sysadmin-tool)
+  - [INTELI Broadcasting protocol](#INTELI-Broadcasting-protocol)
 
 ## Installation
 
@@ -87,7 +88,7 @@ Prepare an Inteli configuration object.
 ```js
 import { InteliConfig } from 'inteli-reverse-proxy';
 const DEFAULT_CONFIGURATION: InteliConfig = {
-  secure: true, // TSL MODE ENABLE WHEN secure at true
+  secure: false, // TSL MODE ENABLE WHEN secure at true (false by default)
   wsServerMount: {
     keepalive: true,
     keepaliveInterval: 20000,
@@ -133,7 +134,7 @@ const checkOrigin: (origin: string) => Promise<boolean> = async (
 ) => {
   return origin === 'localhost';
 };
-const proxyServer: ProxyServer.default = new ProxyServer.default(checkOrigin); // NEW PROXY SERVER
+const proxyServer: ProxyServer = new ProxyServer(checkOrigin); // NEW PROXY SERVER
 ```
 
 An instance of `ProxyServer` will be returned with 2 methodes :
@@ -160,7 +161,7 @@ A new Inteli web server is created by calling `ProxyWebServer` and passing :
 
 ```ts
 import { ProxyWebServer } from 'inteli-reverse-proxy';
-const web001: ProxyWebServer.default = new ProxyWebServer.default( // NEW WEB SERVER 001
+const web001: ProxyWebServer = new ProxyWebServer( // NEW WEB SERVER 001
   'localhost',
   4242,
   'WEB001',
@@ -194,9 +195,7 @@ A new Inteli web server is created by calling `ProxySysAdmin` and passing :
 
 ```ts
 import { ProxySysAdmin } from 'inteli-reverse-proxy';
-const proxySysAdmin: ProxySysAdmin.default = new ProxySysAdmin.default(
-  'localhost'
-); // NEW PROXY SysAdmin
+const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin('localhost'); // NEW PROXY SysAdmin
 ```
 
 An instance of `ProxySysAdmin` will be returned with 5 methodes :
@@ -226,6 +225,7 @@ interface InteliEvent<Type extends string, Action extends string, Payload> {
 ```
 
 So, personalized message have to implement this interface.
+
 `authentification` is in format provide by `InteliAgentSHA256` interface.
 
 ```ts
@@ -238,17 +238,29 @@ interface InteliAgentSHA256 {
 You can use `InteliAgentSHA256Tools` to build your own `InteliAgentSHA256` instance for your personnalized message.
 
 ```ts
-import { InteliAuth } from 'inteli-reverse-proxy';
-const authentification: InteliAuth.default = InteliAuth.InteliAgentSHA256Tools.makeInteliAgentSHA256(
+import {
+  InteliAgentSHA256,
+  InteliAgentSHA256Tools,
+} from 'inteli-reverse-proxy';
+const authentification: InteliAgentSHA256 = InteliAgentSHA256Tools.makeInteliAgentSHA256(
   'myAgentID'
 );
 ```
 
-You also use `InteliAgentSHA256Tools` to generate public and private asymetric cryptographic key need for authetification check validity.
+You also use `InteliAgentSHA256Tools` to generate public and private asymetric cryptographic key need for authentification check validity.
 
 ```ts
-import { InteliAuth } from 'inteli-reverse-proxy';
-InteliAuth.InteliAgentSHA256Tools.genKeys('WEB001');
+import { InteliAgentSHA256Tools } from 'inteli-reverse-proxy';
+InteliAgentSHA256Tools.genKeys('WEB001');
 ```
 
 Keys are write into files in specified directory into environnement parameters `PROXY_ENCRYPT_PRIVATE`.
+
+You also use `InteliAgentSHA256Tools` to check validity of your InteliAgentSHA256 authentification object.
+
+```ts
+import { InteliAgentSHA256Tools } from 'inteli-reverse-proxy';
+const isValid: boolean = InteliAgentSHA256Tools.inteliSHA256CheckValidity(
+  yourAuthentification
+); // TRUE if validity checked
+```

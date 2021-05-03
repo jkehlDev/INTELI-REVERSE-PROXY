@@ -1,5 +1,4 @@
 // <== Imports externals modules
-
 import fs from 'fs';
 import http from 'http';
 import {
@@ -8,9 +7,7 @@ import {
   ProxySysAdmin,
   ProxyWebServer,
   InteliAgentSHA256Tools,
-  DEFAULT_CONFIGURATION,
 } from 'index';
-
 // ==>
 // LOGGER INSTANCE
 const logger = Logger('proxyRunTest');
