@@ -9,12 +9,11 @@ import {
   request as Request,
   server as WsServer,
 } from 'websocket';
-import { DEFAULT_CONFIGURATION } from '../inteli-reverse-proxy';
+import { DEFAULT_CONFIGURATION } from '..';
 import InteliConfig from './tools/InteliConfig';
 import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 import InteliAgentSHA256, {
-  getInteliSHA256FrmAuthorizationHeader,
-  inteliSHA256CheckValidity,
+  InteliAgentSHA256Tools,
 } from './inteliProtocol/Authentification/InteliAgentSHA256';
 import ResolveStatesEnum from './inteliProtocol/enums/ResolveStatesEnum';
 import Host from './inteliProtocol/webServerEvent/Host';
@@ -268,12 +267,12 @@ class ProxyServer {
     );
     let inteliSHA256: InteliAgentSHA256;
     try {
-      inteliSHA256 = getInteliSHA256FrmAuthorizationHeader(
+      inteliSHA256 = InteliAgentSHA256Tools.getInteliSHA256FrmAuthorizationHeader(
         request.httpRequest.headers.authorization
       );
       if (
         !(await _this.originValidator(request.origin)) ||
-        !inteliSHA256CheckValidity(inteliSHA256) ||
+        !InteliAgentSHA256Tools.inteliSHA256CheckValidity(inteliSHA256) ||
         request.requestedProtocols[0] !== INTELI_PROTOCOL
       ) {
         request.reject(401); // Reject unauthaurized client

@@ -1,17 +1,19 @@
 // <== Imports externals modules
+
 import fs from 'fs';
 import http from 'http';
 import {
-  InteliAuth,
-  InteliLogger,
+  Logger,
   ProxyServer,
   ProxySysAdmin,
   ProxyWebServer,
-} from '../inteli-reverse-proxy';
+  InteliAgentSHA256Tools,
+  DEFAULT_CONFIGURATION,
+} from 'index';
 
 // ==>
 // LOGGER INSTANCE
-const logger = InteliLogger.default('proxyRunTest');
+const logger = Logger('proxyRunTest');
 
 function runTest() {
   // TEST Inteli proxy start and stop with delay
@@ -20,13 +22,11 @@ function runTest() {
   ) => {
     return origin === 'localhost';
   };
-  const proxyServer: ProxyServer.default = new ProxyServer.default(checkOrigin); // NEW PROXY SERVER
+  const proxyServer: ProxyServer = new ProxyServer(checkOrigin); // NEW PROXY SERVER
 
-  const proxySysAdmin: ProxySysAdmin.default = new ProxySysAdmin.default(
-    'localhost'
-  ); // NEW PROXY SysAdmin
+  const proxySysAdmin: ProxySysAdmin = new ProxySysAdmin('localhost'); // NEW PROXY SysAdmin
 
-  const web001: ProxyWebServer.default = new ProxyWebServer.default( // NEW WEB SERVER 001
+  const web001: ProxyWebServer = new ProxyWebServer( // NEW WEB SERVER 001
     'localhost',
     4242,
     'WEB001',
@@ -37,7 +37,7 @@ function runTest() {
     })
   );
 
-  const web002: ProxyWebServer.default = new ProxyWebServer.default( // NEW WEB SERVER 002
+  const web002: ProxyWebServer = new ProxyWebServer( // NEW WEB SERVER 002
     'localhost',
     4243,
     'WEB002',
@@ -123,7 +123,7 @@ function runTest() {
 
 try {
   if (!fs.existsSync(`${process.cwd()}/WEB001_privateKey.pem`)) {
-    InteliAuth.InteliAgentSHA256Tools.genKeys('WEB001').then(() => runTest());
+    InteliAgentSHA256Tools.genKeys('WEB001').then(() => runTest());
   } else {
     runTest();
   }

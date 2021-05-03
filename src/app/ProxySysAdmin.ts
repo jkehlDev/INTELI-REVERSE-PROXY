@@ -6,7 +6,7 @@ import {
   connection as Connection,
   IMessage,
 } from 'websocket';
-import { DEFAULT_CONFIGURATION } from '../inteli-reverse-proxy';
+import { DEFAULT_CONFIGURATION } from '..';
 import InteliConfig from './tools/InteliConfig';
 import InteliAgentSHA256, {
   InteliAgentSHA256Tools,

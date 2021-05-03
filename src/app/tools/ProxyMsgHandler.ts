@@ -1,7 +1,6 @@
 // <== Imports externals modules
 import fs from 'fs';
 import { connection as Connection, IMessage } from 'websocket';
-import { inteliSHA256CheckValidity } from '../inteliProtocol/Authentification/InteliAgentSHA256';
 import ResolveStatesEnum from '../inteliProtocol/enums/ResolveStatesEnum';
 import ActionsEnum from '../inteliProtocol/enums/ActionsEnum';
 import EncodesEnum from '../inteliProtocol/enums/EncodesEnum';
@@ -11,6 +10,7 @@ import SysAdminEvent from '../inteliProtocol/sysAdminEvent/SysAdminEvent';
 import WebServerEvent from '../inteliProtocol/webServerEvent/WebServerEvent';
 import ProxySelector from './ProxySelector';
 import getLogger from './logger';
+import { InteliAgentSHA256Tools } from '../inteliProtocol/Authentification/InteliAgentSHA256';
 // ==>
 // LOGGER INSTANCE
 const logger = getLogger('ProxyMsgHandler');
@@ -35,7 +35,7 @@ export default abstract class ProxyMsgHandler {
           const event: InteliEvent<string, string, any> = JSON.parse(
             data.utf8Data
           );
-          if (inteliSHA256CheckValidity(event.authentification)) {
+          if (InteliAgentSHA256Tools.inteliSHA256CheckValidity(event.authentification)) {
             switch (event.header.type) {
               case TypesEnum.sysadmin:
                 return this.resolveSysAdminMsg(event as SysAdminEvent);

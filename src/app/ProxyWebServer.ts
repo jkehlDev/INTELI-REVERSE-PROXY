@@ -6,7 +6,7 @@ import {
   client as WsClient,
   IMessage,
 } from 'websocket';
-import { DEFAULT_CONFIGURATION } from '../inteli-reverse-proxy';
+import { DEFAULT_CONFIGURATION } from '..';
 import InteliConfig from './tools/InteliConfig';
 import { INTELI_PROTOCOL } from './inteliProtocol/InteliEvent';
 import ActionsEnum from './inteliProtocol/enums/ActionsEnum';

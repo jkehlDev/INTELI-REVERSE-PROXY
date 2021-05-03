@@ -1,8 +1,10 @@
 {
   "name": "inteli-reverse-proxy",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "description": "It is a reverse proxy that provides load balancer and dynamic server allocation with websocket broadcast between the server and the reverse proxy.",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["/dist"],
   "scripts": {
     "test": "tsc && node dist/tests/proxyTests.js"
   },
