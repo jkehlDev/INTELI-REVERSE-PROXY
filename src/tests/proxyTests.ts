@@ -7,7 +7,7 @@ import {
   ProxySysAdmin,
   ProxyWebServer,
   InteliAgentSHA256Tools,
-} from 'index';
+} from '..';
 // ==>
 // LOGGER INSTANCE
 const logger = Logger('proxyRunTest');
