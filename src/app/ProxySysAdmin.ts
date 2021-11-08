@@ -4,7 +4,7 @@ import fs from 'fs';
 import {
   client as WsClient,
   connection as Connection,
-  IMessage,
+  Message,
 } from 'websocket';
 import { DEFAULT_CONFIGURATION } from '..';
 import InteliConfig from './tools/InteliConfig';
@@ -94,7 +94,7 @@ class ProxySysAdmin {
             connection.on('close', (code: number, desc: string) => {
               this.wsClientCloseHandler(this, code, desc);
             });
-            connection.on('message', (data: IMessage) => {
+            connection.on('message', (data: Message) => {
               this.wsClientMessageHandler(this, data);
             });
             this.state = ServerStates.OPEN;
@@ -199,7 +199,7 @@ class ProxySysAdmin {
    * @param _this Class instance context
    * @param data Message data content
    */
-  private wsClientMessageHandler(_this: ProxySysAdmin, data: IMessage) {
+  private wsClientMessageHandler(_this: ProxySysAdmin, data: Message) {
     if (data.type === EncodesEnum.utf8) {
       logger.warn(
         `Inteli reverse-proxy sysadmin receive utf8 message : <${data.utf8Data}>`
@@ -207,7 +207,7 @@ class ProxySysAdmin {
     }
     if (data.type === EncodesEnum.binary) {
       logger.warn(
-        `Inteli reverse-proxy sysadmin receive binary message : <${data.utf8Data}>`
+        `Inteli reverse-proxy sysadmin receive binary message : <${data.binaryData}>`
       );
     }
   }

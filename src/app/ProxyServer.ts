@@ -5,7 +5,7 @@ import httpProxy from 'http-proxy';
 import fs from 'fs';
 import {
   connection as Connection,
-  IMessage,
+  Message,
   request as Request,
   server as WsServer,
 } from 'websocket';
@@ -267,9 +267,10 @@ class ProxyServer {
     );
     let inteliSHA256: InteliAgentSHA256;
     try {
-      inteliSHA256 = InteliAgentSHA256Tools.getInteliSHA256FrmAuthorizationHeader(
-        request.httpRequest.headers.authorization
-      );
+      inteliSHA256 =
+        InteliAgentSHA256Tools.getInteliSHA256FrmAuthorizationHeader(
+          request.httpRequest.headers.authorization
+        );
       if (
         !(await _this.originValidator(request.origin)) ||
         !InteliAgentSHA256Tools.inteliSHA256CheckValidity(inteliSHA256) ||
@@ -297,7 +298,7 @@ class ProxyServer {
     );
     _this.wsClientIndexMap.set(connection, inteliSHA256.agentId);
     // <=== Handling client connection events
-    connection.on('message', (data: IMessage) => {
+    connection.on('message', (data: Message) => {
       _this.wsCliMessageHandler(_this, connection, data);
     });
     connection.on('close', (code: number, desc: string) => {
@@ -318,7 +319,7 @@ class ProxyServer {
   private wsCliMessageHandler(
     _this: ProxyServer,
     connection: Connection,
-    data: IMessage
+    data: Message
   ) {
     const hostId: string = _this.wsClientIndexMap.get(connection);
     try {

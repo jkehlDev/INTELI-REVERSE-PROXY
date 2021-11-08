@@ -4,7 +4,7 @@ import https from 'https';
 import {
   connection as Connection,
   client as WsClient,
-  IMessage,
+  Message,
 } from 'websocket';
 import { DEFAULT_CONFIGURATION } from '..';
 import InteliConfig from './tools/InteliConfig';
@@ -34,7 +34,7 @@ enum ServerStates {
  * @function wsClientMessageHandler That will occured if message send by server
  * @param data Message data content
  */
-function wsClientMessageHandler(data: IMessage) {
+function wsClientMessageHandler(data: Message) {
   if (data.type === EncodesEnum.utf8) {
     logger.warn(
       `Inteli reverse-proxy webSocket client receive utf8 message : <${data.utf8Data}>`
@@ -42,7 +42,7 @@ function wsClientMessageHandler(data: IMessage) {
   }
   if (data.type === EncodesEnum.binary) {
     logger.warn(
-      `Inteli reverse-proxy webSocket client receive binary message : <${data.utf8Data}>`
+      `Inteli reverse-proxy webSocket client receive binary message : <${data.binaryData}>`
     );
   }
 }
@@ -68,7 +68,7 @@ class ProxyWebServer {
   private rule: string; // Inteli reverse-proxy web server path rule (for proxy router match rules)
   private connection: Connection = null; // Websocket client connection instance
 
-  private messageHandler: (data: IMessage) => void; // Websocket client message handler
+  private messageHandler: (data: Message) => void; // Websocket client message handler
 
   /**
    * @constructor This provide instance Inteli-reverse-proxy web server (back-end web http server)
@@ -87,16 +87,15 @@ class ProxyWebServer {
     rule: string,
     httpServer: http.Server | https.Server,
     inteliConfig: InteliConfig = DEFAULT_CONFIGURATION,
-    messageHandler: (data: IMessage) => void = wsClientMessageHandler
+    messageHandler: (data: Message) => void = wsClientMessageHandler
   ) {
     try {
       this.inteliConfig = inteliConfig;
       this.host = host;
       this.port = port;
       this.rule = rule;
-      this.inteliAgentSHA256 = InteliAgentSHA256Tools.makeInteliAgentSHA256(
-        agentId
-      );
+      this.inteliAgentSHA256 =
+        InteliAgentSHA256Tools.makeInteliAgentSHA256(agentId);
       this.messageHandler = messageHandler;
       this.httpServer = httpServer;
     } catch (err) {
@@ -134,7 +133,7 @@ class ProxyWebServer {
             connection.on('close', (code: number, desc: string) => {
               this.wsClientCloseHandler(this, code, desc);
             });
-            connection.on('message', (data: IMessage) => {
+            connection.on('message', (data: Message) => {
               this.messageHandler(data);
             });
             logger.info(
@@ -144,14 +143,15 @@ class ProxyWebServer {
               logger.info(
                 `Inteli reverse-proxy web server start (2/2) [${this.inteliAgentSHA256.agentId}]: web server start on port [${this.port}]`
               );
-              const openProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
-                ActionsEnum.open,
-                this.inteliAgentSHA256,
-                this.inteliConfig.webserver.version,
-                this.host,
-                this.port,
-                this.rule
-              );
+              const openProxyEvent: WebServerEvent =
+                InteliEventFactory.makeWebServerEvent(
+                  ActionsEnum.open,
+                  this.inteliAgentSHA256,
+                  this.inteliConfig.webserver.version,
+                  this.host,
+                  this.port,
+                  this.rule
+                );
               this.connection.send(JSON.stringify(openProxyEvent), (err) => {
                 if (err) {
                   reject(err);
@@ -208,14 +208,15 @@ class ProxyWebServer {
             `Inteli reverse-proxy web server stop in progress (2 steps) [${this.inteliAgentSHA256.agentId}] ...`
           );
           if (this.connection.connected) {
-            const closeProxyEvent: WebServerEvent = InteliEventFactory.makeWebServerEvent(
-              ActionsEnum.close,
-              this.inteliAgentSHA256,
-              this.inteliConfig.webserver.version,
-              this.host,
-              this.port,
-              this.rule
-            );
+            const closeProxyEvent: WebServerEvent =
+              InteliEventFactory.makeWebServerEvent(
+                ActionsEnum.close,
+                this.inteliAgentSHA256,
+                this.inteliConfig.webserver.version,
+                this.host,
+                this.port,
+                this.rule
+              );
             this.connection.send(JSON.stringify(closeProxyEvent), (err) => {
               if (err) {
                 reject(err);

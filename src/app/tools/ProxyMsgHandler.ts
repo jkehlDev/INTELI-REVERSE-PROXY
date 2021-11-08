@@ -1,6 +1,6 @@
 // <== Imports externals modules
 import fs from 'fs';
-import { connection as Connection, IMessage } from 'websocket';
+import { connection as Connection, Message } from 'websocket';
 import ResolveStatesEnum from '../inteliProtocol/enums/ResolveStatesEnum';
 import ActionsEnum from '../inteliProtocol/enums/ActionsEnum';
 import EncodesEnum from '../inteliProtocol/enums/EncodesEnum';
@@ -27,11 +27,11 @@ export default abstract class ProxyMsgHandler {
   public msgHandler(
     connection: Connection,
     proxySelector: ProxySelector,
-    data: IMessage
+    data: Message
   ): Promise<ResolveStatesEnum> {
     return new Promise((resolve, reject) => {
       try {
-        if ((data.type = EncodesEnum.utf8)) {
+        if (data.type === EncodesEnum.utf8) {
           const event: InteliEvent<string, string, any> = JSON.parse(
             data.utf8Data
           );
